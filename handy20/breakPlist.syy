@@ -1,0 +1,171 @@
+/*
+	本批处理作用为
+	将plist打散，将creator工程中引用精灵帧的地方改成引用整图
+*/
+var base = require("base")
+var cfg
+function main(args) {
+	var err = 0
+	do {
+		cfg = base.readJson("cfg.json")
+		// 读取了配置信息
+		if(!cfg.have("path")) {
+			dump("path", "配置中缺少path")
+			break
+		}
+		var oper = cfg.oper
+		switch(oper) {
+		case "split":
+			err = process()
+			break
+		case "modify":
+			err = process1()
+			break
+		default:
+			dump(oper, "无法识别的oper")
+			err = 1
+			break
+		}
+ 		
+
+	} while(false)
+	if(err) dump(err, "程序非正常结束")
+}
+
+function process1() {// 统筹，建立对应关系
+	var err = 0
+	do {
+		// 开始遍历png文件，检测当前目录下的cfg.json内的是否一致
+		var files = []
+
+		var path = cfg.path2
+		var dirName = path[path.lastIndexOf('/')+1:]
+
+		var path2 = dirName + "/cfg.json"
+		var uuids = base.readJson(path2)// 读取配置信息
+		if(!uuids) {
+			dump(path2, "打开文件失败")
+			break
+		}
+
+		FileUtils.dirlist(path, files, ".*.png$")
+		var info
+		var fileName
+		var uuid
+		var idx
+		var idx1
+
+		var key = "\"uuid\": \"";
+		// var keyLen = key.length
+
+		for(var i, v of files) {// 遍历
+			fileName = v[v.lastIndexOf('/') + 1:v.lastIndexOf('.')]
+
+			v += ".meta"
+			// 修改uid
+			// info = base.readJson(v)
+			// if(!info) {
+			// 	dump(v, "打开文件失败")
+			// 	err = 1
+			// 	break
+			// }
+			info = FileUtils.readfile(v, FileUtils.UNKNOW)// 不进行编码
+
+			// dump(info, "info")
+			// base.pause()
+
+			uuid = uuids[fileName + ".png"]
+			// dump(uuid, "uuid")
+			// base.pause()
+
+
+			idx = info.indexOf(fileName)
+			if(idx == -1) break
+			idx = info.indexOf(key, idx)
+			if(idx == -1) break
+			idx += key.length
+
+			//info.subMetas[fileName].uuid = uuid
+			idx1 = info.indexOf('"', idx)
+
+			info = info.replace(idx, idx1 - idx, uuid)
+
+			if(err = FileUtils.writefile(v, info, FileUtils.UNKNOW)) {
+				dump(v, "存储文件失败")
+				break// 存储起来
+			}
+
+			// dump(fileName,"fileName")
+		}
+			// base.pause()
+
+	} while(false)
+	return err
+}
+
+function process() {
+	var err = 0
+	do {
+		var path = cfg.path
+		var hash = base.readJson(path)// 读取配置文件，进行拆分
+		var subMetas = hash.subMetas
+		if(!subMetas) {
+			dump("subMetas", "文件中缺少属性，请确保是个plist.meta文件")
+			break
+		}
+
+		var index = path.lastIndexOf(".plist")
+		if(index == -1) {
+			dump(path, "路径中找不到.plist")
+			break
+		}
+		path = path.substr(0, index)
+
+		var fileName = path[path.lastIndexOf('/') + 1:]
+
+		path += ".png"
+
+		var cmd = "magick convert -crop #Wx#H+#X+#Y #PATH #DIR\\#OUT"
+		cmd = cmd.replaceAll("#PATH", path)
+		cmd = cmd.replaceAll("#DIR", fileName)
+
+		FileUtils.rmdir(fileName)// 清空拆分的目录先
+		FileUtils.mkdir(fileName)// 重新创建目录
+
+		var rotatedCmd = "magick convert #DIR\\#A -rotate -90 #DIR\\rotate.png";
+		rotatedCmd = rotatedCmd.replaceAll("#DIR", fileName)
+
+		var uuids = {}
+		var cmd1
+		for(var k, v in subMetas) {
+			if(v.rotated) {
+				cmd1 = cmd.replaceAll("#W", "" + v.height)
+				cmd1 = cmd1.replaceAll("#H", "" + v.width)
+			} else {
+				cmd1 = cmd.replaceAll("#W", "" + v.width)
+				cmd1 = cmd1.replaceAll("#H", "" + v.height)
+			}
+			cmd1 = cmd1.replaceAll("#X", "" + v.trimX)
+			cmd1 = cmd1.replaceAll("#Y", "" + v.trimY)
+			cmd1 = cmd1.replaceAll("#OUT", k)
+			if(err = system(cmd1)) break
+
+			if(v.rotated) {
+				cmd1 = rotatedCmd.replaceAll("#A", k)
+				if(err = system(cmd1)) break
+				// 再将旋转后的文件改名就完事了
+				var srcName = fileName + "/" + k
+				FileUtils.remove(srcName)// 删除原文件
+				FileUtils.rename(fileName + "/rotate.png", srcName)// 改名
+			}
+
+			uuids.put(k, v.uuid)// 将图片名和文件的对应关系存储起来
+		}
+
+		if(err = base.saveJson(fileName + "/cfg.json", uuids)) break
+
+	} while(false)
+	return err
+}
+
+main(os.args())

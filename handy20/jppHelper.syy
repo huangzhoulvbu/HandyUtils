@@ -1,0 +1,47 @@
+var base = require("base")
+function main(args) {
+
+	var err = 0
+	do {
+		var path = args[0]
+		var p = os.platform()
+
+		var idx
+		var isWindow = p == "windows"
+		if(isWindow) {
+			idx = path.lastIndexOf('\\')
+			if(idx == -1) {
+				trace("路径找不到'\\'")
+				err = 1
+				break
+			}
+			path = path[idx+1:path.lastIndexOf('.')]
+		} else {
+			path = path[:path.lastIndexOf('.')]
+		}
+
+		var params = path.split("_")
+
+		var cmd
+		if(isWindow) {
+			cmd = "%HANDY_HOME%\\utils\\win\\JppLua $PARAMS ..\\assets\\scripts\\.*.ts"
+		} else {
+			cmd = "$HANDY_HOME/utils/ios/JppLua $PARAMS ../assets/scripts/.*.ts"
+		}
+
+		var param = ""
+		for(var idx, iter of params) {
+			param += " -d " + iter
+		}
+		cmd = cmd.replaceAll("$PARAMS", param)
+		dump(cmd, "cmd")
+		if(err = system(cmd)) {
+			dump(cmd, "执行失败")
+			break
+		}
+
+	} while(false)
+	if(err) dump(err, "程序非正常结束")
+}
+
+main(os.args())

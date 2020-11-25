@@ -1,0 +1,5 @@
+{
+	"str":"\"empty-#A\":{// 官方\n\t\"CHANNEL_ID\":\"#A\",\t//渠道号\n\t\"reference_file\":[\n\t\t\"android/fuduo.json\",\n\t\t\"common/fuduo.json\"\n\t],\n\t\"game_list\":[\n\t\t\"pk_common\",\n\t\t\"pdk\"\n\t]\n},\n",
+	"start":80010001,
+	"end":80010035
+}

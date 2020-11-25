@@ -1,0 +1,5 @@
+{
+	"str":"\t\t\"AD-HOC_#A\":{\n\t\t\t\"CHANNEL_ID\":\"#A\",\t//渠道号 隋才给参数配置\n\t\t\t\"reference_file\":[\n\t\t\t\t\"ios/cailai.json\",\n\t\t\t\t\"common/cailai.json\",\n\t\t\t\t\"ios/hoc_cailai.json\"\n\t\t\t],\n\t\t\t\"game_list\":[\n\t\t\t\t\"pk_common\",\n\n\t\t\t\t\"pdk\"\n\t\t\t]\n\t\t},\n",
+	"start":80020001,
+	"end":80020035
+}

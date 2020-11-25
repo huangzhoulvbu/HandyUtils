@@ -1,0 +1,1 @@
+%HANDY_HOME%\utils\win\handy %HANDY_HOME%\FUDUO\win32\scalePng.cyy /z /e

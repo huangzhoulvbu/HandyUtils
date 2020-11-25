@@ -1,0 +1,2563 @@
+/* 获取应用的路径
+	TODO：
+		现在存在多次打原生包的问题
+*/
+
+// 获取设备信息
+//system_profiler SPHardwareDataType
+
+function main(argc) {
+	var result = false; 
+	var self = new HashMap();
+	do {
+		/*if release then*/
+		if(argc.size() < 2) {
+			trace("参数错误");
+			break;
+		}
+		self.put("script_path", argc.get(1));
+		/*end*/
+
+		// 增加一下程序权限
+		Sys(self, "chmod +x $HANDY_HOME/utils/ios/*");
+		
+		/*if release then*/
+		if(!check(self)) {
+			break;
+		}
+		/*end*/
+
+		if(!process_init(self)) {
+			break;
+		}
+
+		// 处理文件路径，获取组名，项目名等信息
+		if(!process5(self, argc)) {
+			trace("->5");
+			break;
+		}
+
+		// 初始化
+		if(!process3(self)) {
+			break;
+		}
+
+		// 开始根据渠道包打包
+		if(!process4(self)) {
+			trace("->3");
+			break;
+		}
+
+		trace("包已经打出来了，感谢你一路上淡定的陪伴，欢迎再次使用本软件 ^_^~");
+		result = true;
+	} while(false);
+	
+	if(!result) {
+		trace("很抱歉没有完成任务。。。。。");
+		// playMusic("./Lose.mp3", 4);
+	// } else {
+	// 	playMusic("./Win.mp3", 4);
+	}
+}
+
+/*if release then*/
+function getSysProfiler(self) {
+	do {
+		system("system_profiler SPHardwareDataType >> 1.txt");
+		var content = readfile("1.txt", false);
+		system("rm -f 1.txt");
+
+		var vec = new Vector();
+		splitString(vec, content, "\n");
+		dump(vec, "vec");
+		// pause();
+		var iter = vec.iterator();
+		var str;
+
+		var serialNumber;
+		var hardwareUUID;
+		while(iter.hasNext()) {
+			str = iter.next();
+			if(str.indexOf("Serial Number") == -1) {
+				serialNumber = str.substr(str.indexOf(":") + 1, str.getLength()).trim();
+			} else if(str.indexOf("Hardware UUID") == -1) {
+				hardwareUUID = str.substr(str.indexOf(":") + 1, str.getLength()).trim();
+			}
+			// trace(str.trim());
+		}
+
+		// dump(serialNumber, "serialNumber");
+		// dump(hardwareUUID, "hardwareUUID");
+		// 获取了 电脑信息，
+		// 如果两者一致，才继续处理
+		var md5 = new Md5();
+
+		// 获取机器的识别码，然后让他发给，，生成一下注册码,发给客户端，让其
+		var result = md5.MD5Str(serialNumber + "5188" + hardwareUUID);
+		// dump(result);
+		// pause();
+		// 获取设备,此时，获取文件的
+		// (result.substr(1, result.getLength() - 2))
+		// 获取设
+		// 获取时间，如果时间不够，就删除自身
+		self.put("reg_code", result);
+	} while(false);
+}
+
+// 校验时间
+function checkTime(self) {
+	do {
+		system("rm -f 1.txt");// 移除
+		system("date +%Y:%m:%d >> 1.txt");
+		// 获取了时间和密码
+
+		var content = readfile("1.txt", false);
+		content = content.replace("\n", "");
+		// 获取设备的时间
+
+		// 此时，获取了当前时间，
+		var vec = new Vector();
+		splitString(vec, content, ":");
+		if(vec.size() < 3) {
+			dump(1, "程序异常终止");
+			break;
+		}
+
+		var year = atoi(vec.get(0)) * (30 * 12);
+		var month = atoi(vec.get(1)) * 30;
+		var day = atoi(vec.get(2)) + year + month;
+
+		// dump(day, "day--->");
+		// pause();
+		
+		// 如果当前时间超过，注册时间， 就删除这个文件
+		var out_time_day = 0;
+		if(day > out_time_day) {
+			// 删除脚本文件
+			rmoveSelf(self);
+		}
+	} while(false);
+}
+
+function rmoveSelf(self) {
+	// TODO
+	// 删除脚本文件
+	// trace("删除脚本文件");
+	system("rm -f " + self.get("script_path"));// 移除当前脚本，恢复成未注册版本
+
+}
+
+// 检测注册码，然后
+function check(self) {
+	do {
+		checkTime(self);
+		// 此时，已知注册码，如何校验机器和哪个是否匹配呢
+		// var xxx = "<reg_code>";// 已知机器码。，
+		// xxx + "Zh1shao8geZ1Fu";
+
+		// self.put("reg_day", 0);
+		// var day = 0;// 获取时间，，这样的话，就可以检测时间是否满足条件
+
+		// dump(xxx, "xxx");
+
+		// var t1 = xxx.substr(0, 15);
+		// var t2 = xxx.substr(15, 30);
+		// var t3 = xxx.substr(30, xxx.getLength());
+
+		// dump(t1, "t1");
+		// dump(t2, "t2");
+		// dump(t3, "t3");
+
+		if(!getSysProfiler(self)) {
+			break;
+		}
+
+		// 获取注册码
+		var jqm = 0;// 机器码
+		var md5 = new Md5();// 检测是否一致，如果一致，就算作注册成功。。，过期了，，会有一定的时间会失败。。
+		var str1 = md5.MD5Str("Zh1Shao8GeZ1Fu" + self.get("reg_code"));// 获取本机
+		// self.put("reg_code2", md5.MD5Str("Zh1Shao8GeZ1Fu" + reg_code));
+		self.put("register", str1 == jqm);// 是否注册 如果没注册，直接死循环即可，也不报错。。
+
+		if(!self.get("register")) {//  未注册时就
+			rmoveSelf(self);// 移除自身
+		}
+
+		// 此时 
+		// var year = 2019;
+		// var month = 10;
+
+		// 2019 * 12 * 30 + 10 * 30 + 29
+
+		// return xxx;
+	} while(false);
+}
+/*end*/
+
+// 初始化批处理
+function process_init(self) {
+	var result = false;
+	do {
+		var path = "config.json";
+		var hash = readJson(path);
+
+		if(!hash) {
+			dump(path, "错误：打开配置文件失败！");
+			break;
+		}
+
+		// 合法性检查，先
+
+		var err = false;
+
+		var names2 = ["configs", "info_path", "sub_package", "projects", "configuration", "png", "lua", "version"];
+		var iter2 = names2.iterator();
+		while(iter2.hasNext()) {
+			var key = iter2.next();
+			if(!hash.containsKey(key)) {
+				dump(key, "错误：配置中缺少");
+				err = true;
+				break;
+			}
+		}
+		if(err) {
+			break;
+		}
+
+		var png12 = hash.get("png");
+		var names1 = ["enabled_optimize", "enabled_encrypt", "encrypt"];
+		var iter1 = names1.iterator();		
+		while(iter1.hasNext()) {
+			var key = iter1.next();
+			if(!png12.containsKey(key)) {
+				dump(key, "错误:png缺少配置");
+				err = true;
+				break;
+			}
+		}
+		if(err) {
+			break;
+		}
+
+		var lua12 = hash.get("lua");
+		var names = ["enabled_optimize", "encrypt", "enabled_encrypt", "optimizes", "enabled_md5_path", "enabled_clear_rem", "enabled_pre_compile"];
+		var iter = names.iterator();
+		while(iter.hasNext()) {
+			var key = iter.next();
+			if(!lua12.containsKey(key)) {
+				dump(key, "错误:lua缺少配置");
+				err = true;
+				break;
+			}
+		}
+		if(err) {
+			break;
+		}
+
+		self.put("config", hash);// 压入配置信息
+
+		result = true;
+	} while(false);
+	return result;
+}
+
+function process5(self, argc) {
+	var result = false;
+	do {
+		if(argc.size() < 1) {
+			trace("错误：传入参数个数不正确!");
+			break;
+		}
+
+		var vec = new Vector();
+		var arg = argc.get(0);
+
+		/*var idx = arg.lastIndexOf(".");
+		if(idx == -1) {
+			break;
+		}
+		splitString(vec, arg.substr(0, idx), "_");*/
+		splitString(vec, arg, "_");
+		// dump(vec, "vec");
+		// pause();
+		
+		var iter = vec.iterator();
+
+		var cfgName;
+		var groupName;
+		var showLog = false;
+		var debug = false;
+		var pause = false;
+		var cfg;
+
+		while(iter.hasNext()) {
+			arg = iter.next();
+			do {
+				if(arg.indexOf("@") != -1) {
+					var vec2 = new Vector();
+					splitString(vec2, arg, "@");
+					var arg1 = vec2.get(0);
+					if(arg1 == "N") {
+						cfgName = vec2.get(1);
+						break;
+					} else if(arg1 == "S") {
+						groupName = vec2.get(1);
+						break;
+					} else if(arg1 == "F") {
+						cfg = vec2.get(1);
+						break;
+					}
+				} else if(arg == "L") {
+					showLog = true;
+					break;
+				} else if(arg == "D") {
+					debug = true;
+					break;
+				} else if(arg == "B") {
+					pause = true;
+					break;
+				}
+				dump(arg, "警告，无效的参数");
+			} while(false);
+		}
+
+		if(!cfgName) {
+			trace("错误：没有指定项目配置文件呀？！");
+			break;
+		}
+		if(!groupName) {
+			trace("错误：未配置组名啊！！");
+			break;
+		}
+		if(!cfg) {
+			dump("缺少部署", "错误");
+			break;
+		}
+
+		// 读取配置信息，
+		var config = self.get("config");
+		var configuration = config.get("configuration");
+
+		if(!configuration.containsKey(cfg)) {
+			dump(cfg, "错误:缺少配置");
+			break;
+		}
+
+		var ary = configuration.get(cfg);
+		var iter2 = ary.iterator();
+		var flags = new Vector();// 标签定义
+		while(iter2.hasNext()) {
+			flags.add(iter2.next());
+		}
+		// dump(flags, "flags");
+
+		// 获取平台信息
+
+		var projects = config.get("projects");
+		if(!projects.containsKey(cfgName)) {
+			dump(cfgName, "错误：配置中缺少项目");
+			break;
+		}
+
+		var projInfo = projects.get(cfgName);
+		if(!projInfo.containsKey("group")) {
+			dump("group", "错误：项目配置中缺少");
+			break;
+		}
+		var groupInfo = projInfo.get("group");
+		if(!groupInfo.containsKey(groupName)) {
+			dump(groupName, "组配置中缺失");
+			break;
+		}
+		var pkgInfo = groupInfo.get(groupName);
+
+		var platform = pkgInfo.get("platform");
+		
+		self.put("projType", platform);// 得到了平台信息isIos ? "ios" : "android");
+
+		self.put("cfgName", cfgName);
+		self.put("groupName", groupName);
+		self.put("showLog", showLog);
+		self.put("debug", debug);
+		self.put("flags", flags);
+		self.put("pause", pause);
+
+		// dump(self, "self");
+		// pause();
+
+		result = true;
+	} while(false);
+	return result;
+}
+
+/**
+	第一次打全包检测，ios的话需要检测签名是否和上次一致，不一致直接gg
+*/
+function process12(self, groupValue) {
+	var result = false;
+	do {
+
+		/*if release then*/
+		var r = self.get("register");
+		/*end*/
+
+		var isIOS = self.get("projType") == "ios";
+		if(isIOS) {
+			/*if release then*/
+			// 处理ios
+			if(!process7(self, groupValue)) {
+				trace("process12->1");
+				break;
+			}
+			/*else*`
+			dump("体验版不支持ios打包", "温馨提示");
+			break;
+			/*end*/
+		} else {
+			if(!process1(self)) {
+				trace("process12->2");
+				break;
+			}
+		}
+
+		/*if release then*/
+		if(!r) {
+			if(random(1, 10) < 5) {
+				dump("未注册");
+			}
+			break;
+		}
+		/*end*/
+
+		// 拆包
+		if(!process2(self)) {
+			trace("process12->3");
+			break;
+		}
+		/*if release then*/
+		if(!self.get("register")) {
+			while(true) {
+				var i = 0;
+			}
+		}
+		/*end*/
+
+		// 先把工程复制过来，然后将部分文件删除。。
+		/*if release then*/
+		if(isIOS) {
+			Sys(self, "rm -rf ./temp/proj.ios");
+			Sys(self, "cp -rf ./temp/proj.ios_src ./temp/proj.ios");
+		} else {
+			/*end*/
+			Sys(self, "rm -rf ./temp/proj.android");
+			Sys(self, "cp -rf ./temp/proj.android_src ./temp/proj.android");
+			/*if release then*/
+		}
+		/*end*/
+
+		result = true;
+	} while(false);
+	return result;
+}
+
+function process4(self) {
+	var result = false;
+	do {
+		// 读取组信息开始处理
+		var groupInfo = self.get("groupInfo");
+		groupInfo = groupInfo.get("pkgs");
+
+		var node = groupInfo.nextNode(null);
+
+		/*if release then*/
+		var isIOS = self.get("projType") == "ios";
+		/*end*/
+
+		var groupName;
+		var groupValue;
+		var err = false;
+
+		var first = true;
+
+		while(node) {
+			groupName = node.key();
+			groupValue = node.value();
+
+			dump(groupName, "正在打包");
+
+			if(!fullGroupInfo(self, groupValue)) {
+				trace("process4->1");
+				err = true;
+				break;
+			}
+
+			if(first) {// 打一次包。。不然gg
+				first = false;
+
+				if(!process12(self, groupValue)) {
+					trace("process4->2");
+					err = true;
+					break;
+				}
+			}
+			// 表示这个组已经补充完毕了，开始修改文件
+			// 先将res都清空
+			/*if release then*/
+			if(isIOS) {
+				Sys(self, target(self, "rm -rf ./temp/proj.ios/Payload/$TARGET.app/res"));
+				Sys(self, target(self, "rm -rf ./temp/proj.ios/Payload/$TARGET.app/src"));
+			} else {
+				/*end*/
+				Sys(self, "rm -rf ./temp/proj.android/assets/res");
+				Sys(self, "rm -rf ./temp/proj.android/assets/src");
+				/*if release then*/
+			}
+			/*end*/
+
+			// 根据组信息复制相应的游戏资源
+			if(!process6(self, groupValue, groupName)) {
+				trace("process4->3");
+				err = true;
+				break;
+			}
+
+			node = groupInfo.nextNode(node);
+		}
+		if(err) {
+			break;
+		}
+
+		/*if release then*/
+		if(isIOS) {
+			Sys(self, "rm -rf ./temp/proj.ios");
+			Sys(self, "rm -rf ./temp/proj.ios_src");
+        	Sys(self, "rm -f ./temp/Entitlements.plist");
+		} else {
+			/*end*/
+			Sys(self, "rm -rf ./temp/proj.android");
+			Sys(self, "rm -rf ./temp/proj.android_src");
+			/*if release then*/
+		}
+		/*end*/
+		result = true;
+	} while(false);
+	return result;
+}
+
+// 操作图片
+function magick(self, cmd2) {
+	var result = null;
+	do {
+		var cmd = "#!/bin/bash\nexport MAGICK_HOME=$HANDY_HOME/utils/ImageMagick-7.0.8\nexport PATH=$MAGICK_HOME/bin:$PATH\nexport DYLD_LIBRARY_PATH=$MAGICK_HOME/lib/\n" + cmd2;
+		if(!saveFile("temp.sh", cmd, false)) {
+			break;
+		}
+		Sys(self, "sh temp.sh");
+		Sys(self, "rm -f temp.sh");
+	} while(false);
+	return result;
+}
+
+function process6(self, groupValue, groupName) {
+	var result = false;
+	do {
+		// 这个地方先复制global资源
+		/*if release then*/
+		var type = self.get("projType");
+		/*end*/
+
+		var plist;
+		/*if release then*/
+		if(type == "ios") {
+			safeOper(self, target(self, "cp -rf ./temp/subPackage/global/ ./temp/proj.ios/Payload/$TARGET.app"));
+			plist = readJson(target(self, "./temp/proj.ios_src/Payload/$TARGET.app/Info.plist"));
+		} else {
+			/*end*/
+			safeOper(self, "cp -rf ./temp/subPackage/global/ ./temp/proj.android/assets");
+			Sys(self, "rm -rf ./temp/proj.android/build");
+			/*if release then*/
+		}
+		/*end*/
+
+		var node = groupValue.nextNode(null);
+		var info = readJson(self.get("infoPath"));
+		if(!info) {
+			info = new HashMap();// 没有找到就新建一个。。
+		}
+
+
+		var key;
+
+		var config = self.get("config");
+		var sub_package = config.get("sub_package");
+		var sub_package_enabled = sub_package.get("enabled");
+
+		var channel_ids;// 打多个渠道包
+		var err = false;
+		while(node) {
+			key = node.key();
+			if(key == "app_name") {// 表示修改info.json文件。。。
+				/*if release then*/
+				if(type == "ios") {
+					plist.put("CFBundleDisplayName", node.value());
+				} else {
+					/*end*/
+					var path = "./temp/proj.android/res/values/strings.xml";
+					var content = readfile(path, false);
+					if(!content) {
+						dump(path, "打开文件失败");
+						err = true;
+						break;
+					}
+					content = content.replaceReg("(<string name=\"app_name\">).*?(</string>)", "$1" + node.value() + "$2");
+					if(!saveFile(path, content, false)) {
+						err = true;
+						break;
+					}
+					/*if release then*/
+				}
+				/*end*/
+			} else if(key == "CHANNEL_IDS") {// 打多个渠道包
+				channel_ids = node.value();
+			} else if(key == "ipa_open_app") {
+				/*if release then*/
+				if(type == "android") {
+					dump("意外的 ipa_open_app 配置", "错误");
+					err = true;
+					break;
+				}
+
+				if(!plist.containsKey("CFBundleURLTypes")) {
+					dump("CFBundleURLTypes", "错误：plist中未找到！！");
+					err = true;
+					break;
+				}
+
+				var urls = plist.get("CFBundleURLTypes");
+				if(urls.size() != 1) {
+					dump("CFBundleURLTypes长度为0，ipa_open_app修改失败！！", "错误");
+					err = true;
+					break;
+				}
+				var valuexx = node.value();
+				var node1 = valuexx.nextNode(null);
+				urls = urls.get(0);
+				urls.get("CFBundleURLSchemes").set(node1.value(), 0);
+				urls.put("CFBundleURLName", node1.key());
+				/*else*`
+				trace("体验版不支持苹果外部打开");
+				/*end*/
+			} else if(key == "apk_open_app") {// 替换
+				/*if release then*/
+				if(type == "ios") {
+					dump("意外的 apk_open_app 配置", "错误");
+					err = true;
+					break;
+				}
+				/*end*/
+				// 表示修改info.json文件。。。
+				var paths = [
+					"./temp/proj.android/AndroidManifest.xml", 
+					"./temp/proj.android/original/AndroidManifest.xml"
+				];
+				var iter = paths.iterator();
+				while(iter.hasNext()) {
+					var path = iter.next();
+					var content = readfile(path, false);
+					if(!content) {
+						dump(path, "打开文件失败");
+						err = true;
+						break;
+					}
+					var t = "$1" + node.value() + "$2";
+					content = content.replaceReg("(<data\\s*?android:scheme=\").*?(\"/>)", t);
+					content = content.replaceReg("(<data\\s*?android:scheme=\").*?(\"\\s*?>\\s*?</data>)", t);
+					if(!saveFile(path, content, false)) {
+						err = true;
+						break;
+					}
+				}
+				if(err) {
+					break;
+				}
+			// } else if(key == "launch_png") {
+			// 	trace("");// 无视
+			} else if(key == "icon") {
+				/*if release then*/
+				if(type == "android") {
+					/*end*/
+					var cmd = "cp -f $PATH $NAME";
+					var cmd2;
+
+					var src_path = "./pngs/" + node.value();
+					if(!fileExistsAtPath(src_path)) {
+						dump(src_path, "找不到指定的icon！");
+						break;
+					}
+
+					var md5 = new Md5();
+					var md5_src_path = md5.GetFileMd5(src_path);
+					md5 = null;
+
+					// 将图片处理，过后，再复制进去
+					var cmd3 = "magick convert -resize $Wx$H! $SRC ./temp/tmp.png";
+					cmd3 = cmd3.replace("$SRC", src_path);
+					var cmd4;
+					
+					// 搜寻 ic_launcher.png，都替换一波
+					var list = ergodic(self, "./temp/proj.android/res", "png");
+					var iter = list.iterator();
+
+					if(!fileExistsAtPath("./temp/tempRes2")) {
+						Sys(self, "mkdir -p ./temp/tempRes2");
+					}
+
+					var path_33 = "./temp/tempRes2/$P_$W_$H";
+
+					var idx;
+					var path;
+					while(iter.hasNext()) {
+						path = iter.next();
+
+						idx = path.lastIndexOf("/");
+						if(idx == -1) {
+							err = true;
+							break;
+						}
+						idx++;
+
+						if(path.indexOf("/ic_launcher.png") != -1) {// 改成新版本的图标了
+							// 获取这个图片文件的宽高
+							var size = getImgSize(path);
+
+							var w = "" + size.get("width");
+							var h = "" + size.get("height");
+
+							var md5_path = path_33.replace("$P", md5_src_path);
+							md5_path = md5_path.replace("$W", w);
+							md5_path = md5_path.replace("$H", h);
+
+							if(!fileExistsAtPath(md5_path)) {
+								cmd4 = cmd3.replace("$W", w);
+								cmd4 = cmd4.replace("$H", h);
+		
+								Sys(self, "rm -f ./temp/tmp.png");
+		
+								// 检测此图标文件是否存在
+								magick(self, cmd4);
+
+								// 然后将图片优化至相应目录
+								Sys(self, "rm -f ./temp/tmp.pngo");
+								Sys(self, "$HANDY_HOME/utils/ios/pngquant --ext .pngo ./temp/tmp.png");
+								// 将处理过的图片，移动到临时文件中缓存起来，避免下次再优化，导致时间太慢
+								Sys(self, "mv ./temp/tmp.pngo " + md5_path);
+							}
+
+							// 将缓存中的文件复制到项目中即可
+							cmd2 = cmd.replace("$NAME", path);
+							cmd2 = cmd2.replace("$PATH", md5_path);
+							Sys(self, cmd2);
+						}
+					}
+					// 将临时的图片删除先
+					Sys(self, "rm -f ./temp/tmp.png");
+					Sys(self, "rm -f ./temp/tmp.pngo");
+					if(err) {
+						break;
+					}
+					/*if release then*/
+				}
+				/*end*/
+			} else if(key == "sub_package") {// 将分包资源复制过来。。
+				/*if release then*/
+				// 如果配置了子包，就需要分析
+				if(sub_package_enabled) {
+					// 此时复制游戏资源
+					var iter = node.value().iterator();
+					// 强制将子包资源复制到打包工程
+					var cmd;
+					if(type == "ios") {
+						cmd = target(self, "cp -rf ./temp/subPackage/#A/ ./temp/proj.ios/Payload/$TARGET.app");
+					} else {
+						cmd = "cp -rf ./temp/subPackage/#A/ ./temp/proj.android/assets";
+					}
+					var first = true;
+					var gameGenre = "";
+					var path;
+					while(iter.hasNext()) {
+						path = iter.next();
+						Sys(self, cmd.replace("#A", path));
+						if(first) {
+							first = false;
+						} else {
+							gameGenre += ",";
+						}
+						gameGenre += path;
+					}
+					info.put("sub_package", gameGenre);// 压入子包信息
+				} else {
+					// 警告
+					dump("未开启子包, 却配置了子包信息", "警告");
+				}
+				/*else*`
+				trace("");
+				/*end*/
+			} else if(key == "package_name") {// 修改包名
+				info.put("CFBundleIdentifier", node.value());
+				/*if release then*/
+				if(type == "ios") {
+					plist.put("CFBundleIdentifier", node.value());
+				} else {
+					/*end*/
+					// 表示修改info.json文件。。。
+					var paths = [
+						"./temp/proj.android/AndroidManifest.xml", 
+						"./temp/proj.android/original/AndroidManifest.xml"
+					];
+					var iter = paths.iterator();
+					while(iter.hasNext()) {
+						var path = iter.next();
+						var content = readfile(path, false);
+						if(!content) {
+							dump(path, "打开文件失败");
+							err = true;
+							break;
+						}
+						content = content.replaceReg("(package=\").*?(\")", "$1" + node.value() + "$2");
+						if(!saveFile(path, content, false)) {
+							err = true;
+							break;
+						}
+					}
+					if(err) {
+						break;
+					}
+					/*if release then*/
+				}
+				/*end*/
+			} else if(key == "CHANNEL_NAME" || key == "CHANNEL_ID") {
+				// 无脑压入
+				info.put(key, node.value());
+			} else {// 其他值，无脑压入到里面
+				// 检测info中是否存在这个配置
+				var value = node.value();
+				do {
+					if(key == "apk_keystore" || key == "ipa_keystore" || key == "launch_png") {
+						break;
+					}
+					info.put(key, value);
+				} while(false);
+			}
+			node = groupValue.nextNode(node);
+		}
+		if(err) {
+			break;
+		}
+
+		var cn = info.get("CHANNEL_NAME");
+		self.put("channel_name", cn);
+
+		var project_info = self.get("project_info");
+		var version = project_info.get("version");
+
+		if(!version) {
+			dump("project_info/version", "错误：找不到项目的版本信息！！");
+			break;
+		}
+
+		var versionInfo;
+		/*if release then*/
+		if(type == "ios") {
+			var ios = version.get("ios");
+			if(!ios) {
+				trace("错误：找不到ios版本信息！！");
+				break;
+			}
+			versionInfo = ios;
+		} else {
+			/*end*/
+			var android = version.get("android");
+			if(!android) {
+				trace("错误：找不到android版本信息！！");
+				break;
+			}
+			versionInfo = android;
+			/*if release then*/
+		}
+		/*end*/
+
+		info.put("package_ver_name", versionInfo.get("version_name"));
+		info.put("package_ver_code", versionInfo.get("version_code"));
+		info.put("versionName", version.get("version_name"));
+		info.put("versionCode", version.get("version_code"));
+
+		/*if release then*/
+		if(type == "ios") {
+			// 此时开始修改plist文件
+			plist.put("CFBundleVersion", versionInfo.get("version_name"));
+			plist.put("CFBundleShortVersionString", versionInfo.get("version_code"));
+			plist.put("CFBundleIdentifier", groupValue.get("package_name"));
+
+			var path_x = target(self, "./temp/proj.ios/Payload/$TARGET.app/Info.plist");
+			if(!saveJson(path_x, plist)) {
+				dump(path_x, "保存文件失败！");
+				break;
+			}
+ 			// 将info文件转成xml格式先。。
+        	Sys(self, "plutil -convert xml1 " + path_x);
+        	// 开始打包了！！
+        	if(!self.containsKey("entitle")) {
+	        	var content = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n<key>application-identifier</key>\n<string>$TEAM.$PACKAGE_NAME</string>\n<key>com.apple.developer.team-identifier</key>\n<string>$TEAM</string>\n<key>get-task-allow</key>\n<false/>\n<key>keychain-access-groups</key>\n<array>\n<string>$TEAM.*</string>\n</array>\n</dict>\n</plist>";
+
+	        	var ipa_keystore = groupValue.get("ipa_keystore");
+	        	content = content.replace("$TEAM", ipa_keystore.get("DEVELOPMENT_TEAM"));
+	        	content = content.replace("$PACKAGE_NAME", groupValue.get("package_name"));
+
+	        	var path8 = "./temp/Entitlements.plist";
+	        	if(!saveFile(path8, content, true)) {
+	        		dump(path8, "保存文件失败！");
+	        		break;
+	        	}
+	        	self.put("entitle", true);
+	        }
+		} else {
+			/*end*/
+			var path = "./temp/proj.android/original/AndroidManifest.xml";
+			var content = readfile(path, false);
+			if(!content) {
+				dump(path, "打开文件失败！！");
+				break;
+			}
+
+			content = content.replaceReg("(android:versionCode=)\".*(\")", "$1\"" + versionInfo.get("version_code") + "$2");
+			content = content.replaceReg("(android:versionName=)\".*(\")", "$1\"" + versionInfo.get("version_name") + "$2");
+			if(!saveFile(path, content, false)) {
+				dump(path, "保存文件失败！！");
+				break;
+			}
+
+			path = "./temp/proj.android/apktool.yml";
+			content = readfile(path, false);
+			if(!content) {
+				dump(path, "打开文件失败！！");
+				break;
+			}
+			content = content.replaceReg("(versionCode:\\s*?)'.*?'", "$1'" + versionInfo.get("version_code") + "'");
+
+			content = content.replaceReg("(versionName:) .*\n", "$1 " + versionInfo.get("version_name"));
+			if(!saveFile(path, content, false)) {
+				dump(path, "保存文件失败！！");
+				break;
+			}
+			/*if release then*/
+		}
+		/*end*/
+
+		// 获取组名
+		self.put("groupName", groupName);
+
+		// 开始打包操作
+		if(!process8(self, info, groupValue)) {
+			break;
+		}
+
+		// 打多渠道包
+
+		if(channel_ids) {
+			/*if release then*/
+			if(!process9(self, channel_ids, info, groupValue)) {
+				break;
+			}
+			/*else*`
+			dump("体验版不支持渠道扩展功能", "温馨提示");
+			/*end*/
+		}
+		result = true;
+	} while(false);
+	// 清理一波
+	self.put("dir_cfg", new HashMap());
+	return result;
+}
+
+// 生成多渠道包
+/*if release then*/
+function process9(self, channel_ids, info, groupValue) {
+	var result = false;
+	do {
+		// channel_ids 是个数字，扩展渠道包
+		if(!groupValue.containsKey("CHANNEL_ID")) {
+			trace("错误:组信息中缺少渠道号");
+			break;
+		}
+		var CHANNEL_ID = groupValue.get("CHANNEL_ID");
+
+		var ary;
+		var start;
+		var end;
+		var err = false;
+		var idx;
+		for(var i = 0; i < channel_ids; i++) {
+			idx = CHANNEL_ID + i + 1;
+			dump(idx, "正在打渠道包");
+			info.put("CHANNEL_ID", idx);// 压入渠道号。。
+			if(!process8(self, info, groupValue)) {
+				err = true;
+				break;
+			}
+		}
+		if(err) {
+			break;
+		}
+		result = true;
+	} while(false);
+	return result;
+}
+/*end*/
+
+function process8(self, info, groupValue) {
+	var result = false;
+	do {
+		// 开始修改版本
+		if(!saveJson(self.get("infoPath"), info)) {
+			break;
+		}
+		/*if release then*/
+		if(self.get("projType") == "ios") {
+        	Sys(self, target(self, "rm -rf ./temp/proj.ios/Payload/$TARGET.app/_CodeSignature"));
+
+        	var ipa_keystore = groupValue.get("ipa_keystore");
+        	var pathxx = "./provisions/" + ipa_keystore.get("path");
+        	if(!fileExistsAtPath(pathxx)) {
+        		dump(pathxx, "错误:证书配置文件不存在");
+        		break;
+        	}
+
+			var cmd = target(self, "cp -f $PATH1 ./temp/proj.ios/Payload/$TARGET.app/embedded.mobileprovision");
+			cmd = cmd.replace("$PATH1", pathxx);
+			Sys(self, cmd);
+
+			cmd = "codesign -f -s \"$CODE_SIGN_IDENTITY\" --entitlements ./temp/Entitlements.plist $PROJECT";
+			cmd = cmd.replace("$CODE_SIGN_IDENTITY", ipa_keystore.get("CODE_SIGN_IDENTITY"));
+			cmd = cmd.replace("$PROJECT", target(self, "./temp/proj.ios/Payload/$TARGET.app"));
+
+			Sys(self, cmd);
+			Sys(self, "cd ./temp/proj.ios/ && zip -r ./1.ipa ./Payload");
+
+			var path = "mv ./temp/proj.ios/1.ipa ../#A_#B_#C_#G_#D_#E_#F.ipa";
+			path = path.replace("#A", self.get("cfgName"));
+			path = path.replace("#B", info.get("versionName"));
+			path = path.replace("#C", info.get("versionCode"));
+			path = path.replace("#G", self.get("groupName"));
+			path = path.replace("#D", info.get("CHANNEL_NAME"));
+			path = path.replace("#E", "" + info.get("CHANNEL_ID"));
+
+			var md5 = new Md5();
+			path = path.replace("#F", md5.GetFileMd5("./temp/proj.ios/1.ipa"));
+
+			Sys(self, path);
+		} else {
+			/*end*/
+			var cmd = "java -jar -Duser.language=en -Dfile.encoding=UTF8 $HANDY_HOME/utils/apktool.jar b -o ./temp/2.apk ./temp/proj.android";
+			Sys(self, cmd);
+
+			// 开始签名
+			cmd = "jarsigner -verbose -keystore ./keystores/$keystore -signedjar ./temp/3.apk ./temp/2.apk $A -storepass $B -keypass $C";
+
+			var apk_keystore = groupValue.get("apk_keystore");
+			if(!apk_keystore) {
+				dump("apk_keystore缺失", "错误");
+				break;
+			}
+
+			var names = ["path", "alias", "storepass", "keypass"];
+			var iter = names.iterator();
+			var err = false;
+			while(iter.hasNext()) {
+				var key = iter.next();
+				if(!apk_keystore.containsKey(key)) {
+					dump(key, "错误：apk_keystore中缺少配置");
+					err = true;
+					break;
+				}
+			}
+			if(err) {
+				break;
+			}
+
+			cmd = cmd.replace("$keystore", apk_keystore.get("path"));
+			cmd = cmd.replace("$A", apk_keystore.get("alias"));
+			cmd = cmd.replace("$B", apk_keystore.get("storepass"));
+			cmd = cmd.replace("$C", apk_keystore.get("keypass"));
+
+			Sys(self, cmd);
+
+			Sys(self, "rm -f ./temp/2.apk");
+			// 开始改名
+			var path = "mv ./temp/3.apk ../#A_#B_#C_#G_#D_#E_#F.apk";
+			path = path.replace("#A", self.get("cfgName"));
+			path = path.replace("#B", info.get("versionName"));
+			path = path.replace("#C", info.get("versionCode"));
+
+			path = path.replace("#G", self.get("groupName"));
+
+			path = path.replace("#D", info.get("CHANNEL_NAME"));
+			path = path.replace("#E", "" + info.get("CHANNEL_ID"));
+
+			var md5 = new Md5();
+			path = path.replace("#F", md5.GetFileMd5("./temp/3.apk"));
+
+			Sys(self, path);
+			/*if release then*/
+		}
+		/*end*/
+		result = true;
+	} while(false);
+	return result;
+}
+
+// 填充组信息，一旦有有文件引用就加载进来
+function fullGroupInfo(self, groupValue) {
+	var result = false;
+	do {
+		if(!groupValue.containsKey("reference")) {
+			result = true;
+			break;
+		}
+		// 此时就获取文件内容并且加载！！！
+		var ary = groupValue.get("reference");
+		var iter = ary.iterator();
+		var path;
+		var hash;
+		var err = false;
+
+		var config = self.get("config");
+		var configs = config.get("configs");
+
+		while(iter.hasNext()) {
+			var key = iter.next();
+
+			if(!configs.containsKey(key)) {
+				dump(key, "错误：找不到全局配置");
+				err = true;
+				break;
+			}
+			hash = configs.get(key);
+			hash = hash.get("cfgs");
+			// dump(hash, "hash");
+			// pause();
+			var node = hash.nextNode(null);
+			while(node) {
+				// 补充进去
+				key = node.key();
+				if(!groupValue.containsKey(key)) {
+					// 一旦外部存在，就无视内部的。
+					groupValue.put(key, node.value());
+				}
+				node = hash.nextNode(node);
+			}
+		}
+		if(err) {
+			break;
+		}
+		// 移除
+		groupValue.remove("reference");
+		result = true;
+	} while(false);
+	return result;
+}
+
+// 检测cmd是否存在
+function checkCmd(cmd) {
+	var result = false;
+	do {
+		system(cmd + " >/dev/null 2>./temp/1.temp");
+		// pause();
+
+		var content = readfile("./temp/1.temp", false);
+		system("rm -f ./temp/1.temp");
+
+		if(!content) {
+			break;
+		}
+		// 表示命令不存在，直接报错
+		if(content.indexOf("command not found") != -1) {
+			break;
+		}
+		result = true;
+	} while(false);
+	return result;
+}
+
+function process3(self) {
+	var result = false;
+	do {
+		trace("正在初始化中...");
+
+		// 避免重复创建目录
+		self.put("dir_cfg", new HashMap());
+
+		// 获取组件名
+		var config = self.get("config");
+		if(!config.containsKey("projects")) {
+			// 项目文件错误
+			dump("配置中缺少'projects'", "错误");
+			break;
+		}
+
+		var projects = config.get("projects");
+		var cfgName = self.get("cfgName");
+		if(!projects.containsKey(cfgName)) {
+			dump("projects中缺少" + cfgName, "错误");
+			break;
+		}
+		// dump(cfgName, "cfgName");
+
+
+		var project_info = projects.get(cfgName);// 获取项目信息
+		self.put("project_info", project_info);
+
+		var group_info = project_info.get("group");// 获取项目的组信息
+
+
+		var groupName = self.get("groupName");
+		if(!group_info.containsKey(groupName)) {
+			dump(groupName, "错误：配置中找不到对应的组名！！");
+			break;
+		}
+
+		self.put("groupInfo", group_info.get(groupName));
+		if(project_info.containsKey("flags")) {// 标签
+			// 添加标签到flag中
+			var flags = project_info.get("flags");
+			var iter = flags.iterator();
+			var flags3 = self.get("flags");
+			while(iter.hasNext()) {
+				flags3.add(iter.next());
+			}
+		}
+
+		if(!config.containsKey("info_path")) {
+			dump("info_path", "配置中缺少");
+			break;
+		}
+
+		/*if release then*/
+		if(self.get("projType") == "android") {
+			/*end*/
+			var path2 = "./temp/proj.android/assets/res/$1";
+			path2 = path2.replace("$1", config.get("info_path"));
+			self.put("infoPath", path2);
+		/*if release then*/
+		}
+		/*end*/
+
+		// 整理flag
+		if(!process11(self)) {
+			break;
+		}
+
+		result = true;
+	} while(false);
+	return result;
+}
+
+/**
+	整理flag，检测配置中是否存在这个渠道名，存在就是合并起来
+*/
+function process11(self) {
+	var result = false;
+	do {
+		// 整理flags
+		var flags = self.get("flags");
+
+		var iter = flags.iterator();
+		var hash3 = new HashMap();
+		while(iter.hasNext()) {
+			hash3.put(iter.next(), true);
+		}
+		var node = hash3.nextNode(null);
+		var new_flags = new Vector();
+		while(node) {
+			new_flags.add(node.key());
+			node = hash3.nextNode(node);
+		}
+		self.put("flags", new_flags);
+
+		result = true;
+	} while(false);
+	return result;
+}
+
+function process2(self) {
+	var result = false;
+	do {
+		// 检测是否开启了 子包拆分
+		var config = self.get("config");
+
+		trace("处理图片资源中，请稍安勿躁~");
+
+		var first;
+		/*if release then*/
+		if(self.get("projType") == "android") {
+			/*end*/
+			first = "./temp/proj.android_src/assets";
+			/*if release then*/
+		} else {
+			first = target(self, "./temp/proj.ios_src/Payload/$TARGET.app");
+		}
+		/*end*/
+
+		var err = false;
+		// 首先检测 /tempRes/目录下是否存在配置文件。。如果存在，检测是否和上次配置不一致，如果不一致，就删除。。
+		do {
+			var res_cfg = readJson("./temp/tempRes/cfg.json");
+			// dump(res_cfg, "res_cfg");
+			var png = config.get("png");
+
+			/*if debug then*`
+			if(png) {// 测试版，不支持图片加密等功能。。提醒
+				if(png.get("enabled_encrypt")) {
+					dump("体验版不支持图片加密功能", "温馨提示");
+					png.put("enabled_encrypt", false);
+				}
+				if(png.get("enabled_optimize")) {
+					png.put("enabled_optimize", false);
+					dump("体验版不支持图片优化功能", "温馨提示");
+				}
+			}
+			/*end*/
+
+			// dump(png, "png");
+			// pause();
+			if(res_cfg) {// 如果不存在，则直接清理掉
+				var ary = ["enabled_optimize", "encrypt", "enabled_encrypt"];
+				var iter = ary.iterator();
+				var key;
+				var equal = true;
+				while(iter.hasNext()) {
+					key = iter.next();
+					if(!res_cfg.containsKey(key)) {// 不存在，则gg
+						equal = false;
+						break;
+					}
+					if(res_cfg.get(key) != png.get(key)) {
+						equal = false;
+						break;
+					}
+				}
+				if(equal) {// 表示和上次一致，这样的话，继续采用上次优化逻辑
+					break;
+				}
+			}			
+			trace("重新创建");
+			Sys(self, "rm -rf ./temp/tempRes");// 清理目录
+			Sys(self, "mkdir -p ./temp/tempRes");
+
+			// 写入配置信息到文件夹
+			var path3 = "./temp/tempRes/cfg.json";
+			if(!saveJson(path3, png)) {// 存储起来
+				dump(path3, "存储失败");
+				err = true;
+				break;
+			}
+		} while(false);
+		if(err) {
+			break;
+		}
+
+		// trace("-----检查--->>>");
+		// pause();
+
+		// 重新创建子包
+		Sys(self, "rm -rf ./temp/subPackage");
+		Sys(self, "mkdir -p ./temp/subPackage");// global表示全局资源
+
+		var cmd1 = "$HANDY_HOME/utils/ios/pngquant --ext .pngo #A";
+		var cmd2;
+
+		// 复制普通文件至子包
+		var cmd4 = "cp $PATH/#A ./temp/subPackage/#B/#A";
+		cmd4 = cmd4.replace("$PATH", first);
+		var cmd7 = "cp $PATH/#A ./temp/subPackage/#B/#C";
+		cmd7 = cmd7.replace("$PATH", first);
+
+		// 复制优化过的图片至子包
+		var cmd5 = "cp ./temp/tempRes/#C ./temp/subPackage/#B/#A";
+
+		// 获取png加密密码
+		////////////////////////////////////////////
+
+		var png = config.get("png");
+		// 是否开启了优化。。
+		var enabled_encrypt = png.get("enabled_encrypt");
+		// if(!enabled_encrypt) {
+		// 	dump("enabled_encrypt", "错误：png配置中缺少");
+		// 	break;
+		// }
+		var enabled_optimize = png.get("enabled_optimize");
+		// if(!enabled_optimize) {
+		// 	dump("enabled_optimize", "错误：png配置中缺少");
+		// 	break;
+		// }
+
+		var cmd3;	// 复制优化过的图片过去，存起来，这样避免下次再优化
+		var cmd6;
+		if(enabled_encrypt) {
+			cmd3 = "mv #Ac #B";
+			if(enabled_optimize) {// 如果启用了优化，那么中间文件就带o这个扩展名
+				cmd6 = "$HANDY_HOME/utils/ios/EncryptPNG #Ao #B";
+			} else {
+				cmd6 = "$HANDY_HOME/utils/ios/EncryptPNG #A #B";
+			}
+
+			var encrypt = png.get("encrypt");// 获取密钥
+			if(!encrypt) {
+				dump("encrypt", "错误：png配置中缺少");
+				break;
+			}
+			cmd6 = cmd6.replace("#B", encrypt);
+		} else {
+			if(enabled_optimize) {// 最终移动的文件
+				cmd3 = "mv #Ao #B";
+			} else {
+				cmd3 = "mv #A #B";
+			}
+		}
+		////////////////////////////////////////////
+
+		// /*if debug then*/
+		// if(enabled_encrypt) {
+		// 	dump("体验版不支持图片加密功能", "温馨提示");
+		// }
+		// if(enabled_optimize) {
+		// 	dump("体验版不支持图片优化功能", "温馨提示");
+		// }
+		// /*end*/
+
+		// 获取lua信息
+		////////////////////////////////////////////
+		var lua = config.get("lua");
+		// 是否MD5脚本路径
+		var enabled_md5_path = lua.get("enabled_md5_path");
+
+		// 这里要根据是否加密脚本，来判断是luac还是lua
+		var luaExName = lua.get("enabled_encrypt") ? "luac" : "lua";
+		////////////////////////////////////////////
+
+		var sub_package = config.get("sub_package");
+		var sub_package_enabled = sub_package.get("enabled");// 是否启用拆分子包功能
+		// var sub_package_enabled_src = sub_package.get("enabled_src");// 是否启用拆分脚本的功能
+
+		/*if debug then*`
+		if(sub_package_enabled) {
+			dump("体验版不支持拆分子包功能", "温馨提示");
+		}
+		if(enabled_md5_path) {
+			dump("体验版不支持拆分脚本路径加密功能", "温馨提示");
+		}
+		/*end*/
+
+		var path1 = "./temp/tempRes/#A";
+		var path2;
+		var path3;
+
+		var val1;
+		var val2;
+
+		var md5 = new Md5();
+
+		// 优化png至某处
+		var path4 = first;
+		var src_len = path4.getLength() + 5;
+
+		var list = ergodicAll(self, path4);
+
+		// 获取前缀长度
+		var len1 = path4.getLength() + 1;
+
+		var iter = list.iterator();
+		var path;
+		var md5Val;
+
+		var matchInfo = new HashMap();
+		var tIdx;
+		while(iter.hasNext()) {
+			path = iter.next();
+			// 不属于res或者src的都无视
+			tIdx = path.indexOf("/src/");
+			if(tIdx == -1) {
+				tIdx = path.indexOf("/res/");
+				if(tIdx == -1) {
+					continue;
+				}
+			}
+			tIdx += 5;
+			md5Val = false;
+			// 开始检测文件是否存在。。
+			do {
+				val2 = path.lastIndexOf(".");
+				if(val2 == -1) {// 文件不能识别，不处理
+					dump(path, "process2-1");
+					err = true;
+					break;
+				}
+				path3 = path.substr(val2 + 1, path.getLength());
+				if(path3 != "png") {
+					break;
+				}
+
+				// 获取文件的MD5，，看看是否存在
+				md5Val = md5.GetFileMd5(path);
+				path2 = path1.replace("#A", md5Val);
+				if(fileExistsAtPath(path2)) {
+					// 检测文件MD5是否一致
+					break;
+				}
+
+				// 开始优化
+				/*if release then*/
+				if(enabled_optimize) {// 启用优化图片
+					Sys(self, cmd1.replace("#A", path));
+				}
+
+				// 这个地方存在一波加密处理
+				if(enabled_encrypt) {// 启用加密
+					cmd2 = cmd6.replace("#A", path);
+					cmd2 = cmd2.replace("#B", path2);
+					Sys(self, cmd2);
+				}
+				/*end*/
+
+				// 将处理过后的文件复制过去
+				cmd2 = cmd3.replace("#A", path);
+				cmd2 = cmd2.replace("#B", path2);
+
+				// 有几种情况，
+				// 1、加密，优化
+				// 2、只优化，不加密
+				// 3、不优化，加密
+
+				Sys(self, cmd2);
+			} while(false);
+			if(err) {
+				break;
+			}
+			// 复制至目标子包文件夹。。。
+			var subPkgName;
+			// 是否启用子包功能
+			/*if release then*/
+			if(sub_package_enabled) {
+				subPkgName = getSubPackageName(self, path.substr(tIdx, path.getLength()));
+			} else {
+				/*end*/
+				subPkgName = "global";// 直接变成全局
+				/*if release then*/
+			}
+			/*end*/
+			// 将文件复制过去
+			if(md5Val) {// 如果存在MD5，表示是png资源
+				// TODO 是否加密，根本无需考虑改扩展名问题，直接分析数据内容，就可以知道是否为加密过后的png了。。到时改一下引擎即可
+				cmd2 = cmd5.replace("#C", md5Val);
+				// 复制到子包目录
+				cmd2 = cmd2.replace("#A", path.substr(len1, path.getLength()));
+			} else {
+				/*if release then*/
+				if(enabled_md5_path && path3 == luaExName) {// 如果是加密过的lua文件
+					// 此时需要将lua的路径加密再复制过去。
+					// 需要判断，是否需要处理，路径加密，才处理
+					cmd2 = cmd7.replace("#A", path.substr(len1, path.getLength()));
+					
+					var path44 = path.substr(src_len, path.getLength() - 5);
+					var key33 = md5.MD5Str(path44);						
+
+					cmd2 = cmd2.replace("#C", "src/" + key33);
+					matchInfo.put(key33, path44);
+				} else {
+					/*end*/
+					cmd2 = cmd4.replace("#A", path.substr(len1, path.getLength()));
+					/*if release then*/
+				}
+				/*end*/
+			}
+			cmd2 = cmd2.replace("#B", subPkgName);
+
+			// if(path3 == luaExName) {
+			// 	dump(cmd2, "cmd2===========>");
+			// 	pause();
+			// }
+
+			safeOper(self, cmd2);
+		}
+		if(err) {
+			break;
+		}
+
+		/*if release then*/
+		if(enabled_md5_path) {// 启用MD5加密后，才存储拆包文件
+			if(!saveJson("matchInfo.json", matchInfo)) {
+				break;
+			}
+		}
+		/*end*/
+		result = true;
+	} while(false);
+
+	// 清理目录信息
+	self.put("dir_cfg", new HashMap());
+	// pause();
+	return result;
+}
+
+// 获取图片的纹理
+function getImgSize(path) {
+	var result = false;
+	do {
+		// 检测该文件大小。。
+		var file = new File();
+	    if(!file.openFile(path, false)) {
+	        // tag = false;
+	        dump(path, "打开文件失败");
+	        break;
+	    }
+	    var byteAry = file.readToByteArray();
+	    file.closeFile();
+
+	    byteAry.setPosition(16);
+	    var w = byteAry.readInt(true);
+	    var h = byteAry.readInt(true);
+	    
+	    result = new HashMap();
+	    result.put("width", w);
+	    result.put("height", h);
+	} while(false);
+	return result;
+}
+
+// 安全操作，不用考虑操作前目录不存在问题
+function safeOper(self, cmd) {
+	var result = false;
+	do {
+		do {
+			var idx1 = cmd.lastIndexOf(" ");
+			if(idx1 == -1) {
+				break;
+			}
+			var idx2 = cmd.lastIndexOf("/");
+			if(idx1 == -1) {
+				break;
+			}
+			var dir = cmd.substr(idx1 + 1, idx2);
+			var hash = self.get("dir_cfg");
+			if(!hash.containsKey(dir)) {
+				Sys(self, "mkdir -p " + dir);
+				hash.put(dir, true);
+			}
+		} while(false);
+		Sys(self, cmd);
+	} while(false);
+}
+
+
+// path转uuid
+function pathToUuid(self, path) {
+	var result = false;
+	var hash = self.get("matchInfo");
+	var node = hash.nextNode(null);
+	while(node) {
+		if(node.value() == path) {
+			result = node.key();
+			break;
+		}
+		node = hash.nextNode(node);
+	}
+	return result;
+}
+
+// 检测路径属于哪个子包
+function getSubPackageName(self, path) {
+	var result = "global";
+	do {
+		if(!path) {
+			break;
+		}
+		var idx = path.indexOf("/");
+		if(idx == -1) {
+			break;
+		}
+		idx++;
+		var idx2 = path.indexOf("/", idx);
+		if(idx2 == -1) {
+			break;
+		}
+		idx2 = path.indexOf("/", idx2 + 1);
+		if(idx2 == -1) {
+			break;
+		}
+		path = path.substr(idx, idx2);
+
+		var config = self.get("config");
+		var sub_package = config.get("sub_package");
+		var children = sub_package.get("children");
+		if(!children) {
+			dump("children", "sub_package配置中缺少");
+			break;
+		}
+
+		var node = children.nextNode(null);
+		while(node) {
+			if(path.indexOf(node.key()) != -1) {// 表示找到了
+				result = node.value();// 获取key
+				break;
+			}
+			node = children.nextNode(node);
+		}
+	} while(false);
+	return result;
+}
+
+function strDebug(self, cmd) {
+	/*if release then*/
+	if(self.get("projType") == "ios") {
+		return cmd.replace("$DEBUG", "publish");
+	} else {
+		/*end*/
+		return cmd.replace("$DEBUG", "simulator");
+		/*if release then*/
+	}
+	/*end*/
+}
+
+// 准备好包文件
+function process1(self) {
+	var result = false;
+	do {
+		trace("正在打apk原生包...");
+		// 删除这个目录，重新生成apk
+		// system("echo $COCOS_CONSOLE_ROOT");
+		Sys(self, strDebug(self, "rm -rf ../$DEBUG/android"));
+		var cmd = "$COCOS_CONSOLE_ROOT/cocos compile -p android --compile-script 0";
+		Sys(self, cmd);
+
+		// 搜寻当前目录下的apk
+		var list = ergodic(self, strDebug(self, "../$DEBUG/android"), "apk");
+		if(!list) {
+			dump(strDebug(self, "../$DEBUG/android 下一个'.apk'文件都没找到？！"), "错误");
+			break;
+		}
+		if(list.size() > 1) {
+			dump(strDebug(self, "../$DEBUG/android/apk下'.apk'文件太多？！"), "错误");
+			break;
+		}
+
+		Sys(self, "rm -rf ./temp/proj.android_src");
+
+		trace("正在拆包...");
+		cmd = "java -jar -Duser.language=en -Dfile.encoding=UTF8 $HANDY_HOME/utils/apktool.jar d -o ./temp/proj.android_src #A";
+		cmd = cmd.replace("#A", list.get(0));
+		Sys(self, cmd);
+
+		// 不压缩指定扩展名
+		var path_xx = "./temp/proj.android_src/apktool.yml";
+		var content = readfile(path_xx, false);
+		content = content.replace("- arsc\n- png", "- arsc\n- png\n- mp3");
+		if(!saveFile(path_xx, content, false)) {
+			dump(path_xx, "保存文件失败！！");
+			break;
+		}
+
+		cmd = "java -jar $HANDY_HOME/utils/AXMLPrinter2.jar ./temp/proj.android_src/original/AndroidManifest.xml -f > ./temp/proj.android_src/2.xml";
+		if(!self.get("showLog")) {
+			cmd += " 2>/dev/null";
+		}
+		system(cmd);
+		Sys(self, "rm -f ./temp/proj.android_src/original/AndroidManifest.xml");
+		Sys(self, "mv ./temp/proj.android_src/2.xml ./temp/proj.android_src/original/AndroidManifest.xml");
+
+		// 将包中的res和src干掉，然后复制包外面的进来
+		Sys(self, "rm -rf ./temp/proj.android_src/assets/src");
+		Sys(self, "rm -rf ./temp/proj.android_src/assets/res");
+
+		trace("正在复制资源...");
+
+		var t = self.get("config").get("projects").get(self.get("cfgName"));
+
+		// 复制指定项目的资源进行打包
+		var cmdx = "cp -rf ../#A ./temp/proj.android_src/assets/res";
+		cmdx = cmdx.replace("#A", t.get("res_dir"));
+		Sys(self, cmdx);
+
+		// 复制脚本到目录
+		cmdx = "cp -rf ../#A ./temp/proj.android_src/assets/src";
+		cmdx = cmdx.replace("#A", t.get("src_dir"));
+		Sys(self, cmdx);
+
+		var config = self.get("config");
+		var lua = config.get("lua");
+
+		// 首先切换标签。。
+		if(lua.get("enabled_optimize")) {// 当脚本启用了优化功能
+			/*if release then*/
+			if(!optimizeSrc(self, "./temp/proj.android_src/assets/src")) {// 开始优化脚本
+				break;
+			}
+			/*else*`
+			trace("体验版不支持脚本优化");
+			/*end*/
+		}
+
+		// 处理这个目录的文件
+		if(lua.get("enabled_pre_compile")) {
+			/*if release then*/
+			var cmd39 = "$HANDY_HOME/utils/ios/JppLua $CLS#A ./temp/proj.android_src/assets/src/.*.lua";
+			cmd39 = cmd39.replace("$CLS", lua.get("enabled_clear_rem") ? "-C" : "");// 是否启用清理脚本逻辑
+
+			var cmd33 = "";
+			if(self.containsKey("flags")) {
+				var flags = self.get("flags");
+				var iter3 = flags.iterator();
+				var flag;
+				while(iter3.hasNext()) {
+					flag = iter3.next();
+					cmd33 += " -D ";
+					cmd33 += flag;
+				}
+			}
+			cmd39 = cmd39.replace("#A", cmd33);
+			system(cmd39);
+
+			// TODO 这里代码不知道有没有问题。。
+			if(getReturnVal() != "0") {
+				dump("切换 lua 标签失败", "错误");
+				break;
+			}
+			/*else*`
+			trace("体验版不支持脚本预编译功能");
+			/*end*/
+		}
+
+		if(self.get("pause")) {
+			// 把代码复制出来即可
+			Sys(self, "rm -rf ./temp/src");
+			Sys(self, "cp -rf ./temp/proj.android_src/assets/src ./temp/src");
+			dump("./temp/src", "代码已复制到该目录下");
+			// pause();
+			break;
+		}
+
+		if(lua.get("enabled_encrypt")) {
+			trace("正在编译lua...");
+			cmd = "$COCOS_CONSOLE_ROOT/cocos luacompile -s ./temp/proj.android_src/assets/src -d ./temp/proj.android_src/assets/src2 -e -k #A -b #B --disable-compile";
+
+			var encrypt = lua.get("encrypt");
+			if(!encrypt) {
+				dump("encrypt", "错误:lua配置中缺少");
+				break;
+			}
+
+			cmd = cmd.replace("#A", encrypt.get("key"));
+			cmd = cmd.replace("#B", encrypt.get("sign"));
+			Sys(self, cmd);
+
+			Sys(self, "rm -rf ./temp/proj.android_src/assets/src");
+			Sys(self, "mv ./temp/proj.android_src/assets/src2 ./temp/proj.android_src/assets/src");
+		} else {
+			trace("不加密脚本...");
+			// 直接把脚本搞过去即可
+			Sys(self, "mv ./temp/proj.android_src/assets/src ./temp/proj.android_src/assets/src");
+		}
+
+		result = true;
+	} while(false);
+
+	return result;
+}
+
+// 开始优化脚本
+function optimizeSrc(self, dir) {
+	var result = false;
+	do {
+		// 获取优化的参数
+		var funcName = "";
+
+		var config = self.get("config");
+		// 获取配置信息
+		var lua = config.get("lua");
+		var optimizes = lua.get("optimizes");// 获取优化信息
+		if(optimizes.size() < 1) {// 没必要优化了。。朋友
+			result = true;
+			break;
+		}
+		var iter1 = optimizes.iterator();
+		var first = true;
+		while(iter1.hasNext()) {
+			if(first) {
+				first = false;
+			} else {
+				funcName += "|";
+			}
+			funcName += iter1.next();// 累加
+		}
+
+		// 遍历lua文件，处理所有文件
+		// (^\s*)([dump|print]+\()  $1-- $2
+		var list = ergodic(self, dir, "lua");
+		if(!list) {
+			dump(dir, "一个lua文件都没找到");
+			break;
+		}
+		var err = false;
+
+		var iter = list.iterator();
+		var path;
+		var content;
+
+		// 获取注册码
+		var reg = "(\\n\\s*)(($1)\\s*\\()";
+		reg = reg.replace("$1", funcName);
+
+		while(iter.hasNext()) {
+			path = iter.next();
+
+			content = readfile(path, false);
+			if(!content) {
+				dump(path, "打开文件失败");
+				err = true;
+				break;
+			}
+			content = content.replaceReg(reg, "$1-- $2");
+			if(!saveFile(path, content, false)) {
+				dump(path, "保存文件失败");
+				err = true;
+				break;
+			}
+
+		}
+		if(err) {
+			break;
+		}
+		result = true;
+	} while(false);
+	return result;
+}
+
+// 获取命令返回值
+function getReturnVal() {
+	var result = 0;
+	do {
+		system("echo $? > out.txt");
+		var content = readfile("out.txt", false);
+		if(!content) {
+			break;
+		}
+		system("rm -f out.txt");
+		result = content.substr(0, 1);
+	} while(false);
+	return result;
+}
+
+/*if release then*/
+function target(self, cmd) {
+	return cmd.replace("$TARGET", self.get("target"));
+}
+
+function refTarget(self, path) {
+	var result = false;
+	do {
+		var idx2 = path.lastIndexOf("/");
+		if(idx2 == -1) {
+			break;
+		}
+		var idx1 = path.lastIndexOf("/", idx2 - 1);
+		if(idx1 == -1) {
+			break;
+		}
+
+		idx2 = path.indexOf(".", idx1);
+		if(idx2 == -1) {
+			break;
+		}
+
+		var target = path.substr(idx1 + 1, idx2);
+		self.put("target", target + "-mobile");
+
+		var config = self.get("config");
+		var str = "./temp/proj.ios/Payload/$TARGET.app/res/$A";
+		str = str.replace("$A", config.get("info_path"));// 获取配置信息
+		self.put("infoPath", target(self, str));
+
+		result = true;
+	} while(false);
+	return result;
+}
+
+// 准备好包文件
+function process7(self, groupValue) {
+	var result = false;
+	do {
+		// 删除这个目录，重新生成apk
+		trace("正在打ipa原生包...");
+		if(!fileExistsAtPath("./temp/tempRes2")) {// 提前创建好目录
+			Sys(self, "mkdir -p ./temp/tempRes2");
+		}
+
+		// 修改证书 包名等信息
+		var dir = "../frameworks/runtime-src/proj.ios_mac";
+		var list = ergodic(self, dir, "pbxproj");
+		
+		if(!list) {
+			dump(dir, "错误:该目录下找不到.pbxproj文件");
+			break;
+		}
+		if(list.size() > 1) {
+			dump(dir, "错误:该目录下.pbxproj文件过多!，请确保有且只有一个！");
+			break;
+		}
+		var path = list.get(0);
+
+		if(!refTarget(self, path)) {
+			trace("process7->2");
+			break;
+		}
+
+		// 开始替换图标
+		// 将某个文件夹加下的图片都复制过来
+		// 遍历文件夹
+		if(!groupValue.containsKey("icon")) {
+			dump("找不到配置 icon", "错误");
+			break;
+		}
+		var icon = groupValue.get("icon");
+
+		var list2 = ergodic(self, dir, "png");
+
+		var iter2 = list2.iterator();
+		var path33;
+		var idx1;
+
+		var idx3;
+		var wh;
+
+		var cmd = "cp -f $PATH $NAME";
+		var cmd2;
+
+		var src_path = "./pngs/$A";
+		src_path = src_path.replace("$A", icon);
+		if(!fileExistsAtPath(src_path)) {
+			dump(src_path, "严重错误：图标文件不存在!");
+			break;
+		}
+
+		// 将图片处理，过后，再复制进去
+		var cmd3 = "magick convert -resize $Wx$H! $SRC ./temp/tmp.png";
+		cmd3 = cmd3.replace("$SRC", src_path);
+		var cmd4;
+
+		// 将图片处理，过后，再复制进去
+		var launch_png = groupValue.get("launch_png");
+		if(!launch_png) {
+			dump("launch_png", "错误：缺少配置");
+			break;
+		}
+
+		var src_path2 = "./pngs/$A";
+		src_path2 = src_path2.replace("$A", launch_png);
+		if(!fileExistsAtPath(src_path2)) {
+			dump(src_path2, "严重错误：启动图 不存在!");
+			break;
+		}
+
+		var cmd5 = "magick convert -resize $Wx$H! $SRC ./temp/tmp.png";
+		cmd5 = cmd5.replace("$SRC", src_path2);
+		var cmd6;
+
+		var cmd7 = "magick convert -rotate 90 ./temp/tmp.png ./temp/tmp2.png";
+		cmd7 = cmd7.replace("$SRC", src_path2);
+
+		// 获取原始文件的MD5，加快优化速度
+		var md5 = new Md5();
+		var md5_src_path = md5.GetFileMd5(src_path);
+		var md5_src_path2 = md5.GetFileMd5(src_path2);
+		md5 = null;
+
+		var path_33 = "./temp/tempRes2/$P_$W_$H";
+		// 判断icon是否存在
+		while(iter2.hasNext()) {
+			path33 = iter2.next();
+			idx1 = path33.indexOf(".appiconset/");
+			if(idx1 != -1) {// 表示图标文件，再从相应的目录获取
+				// 获取这个图片文件的宽高
+				var size = getImgSize(path33);
+
+				var w = "" + size.get("width");
+				var h = "" + size.get("height");
+
+				cmd2 = cmd.replace("$NAME", path33);
+
+				var md5_path = path_33.replace("$P", md5_src_path);
+				md5_path = md5_path.replace("$W", w);
+				md5_path = md5_path.replace("$H", h);
+
+				if(!fileExistsAtPath(md5_path)) {
+					cmd4 = cmd3.replace("$W", w);
+					cmd4 = cmd4.replace("$H", h);
+
+					Sys(self, "rm -f ./temp/tmp.png");
+
+					// 检测此图标文件是否存在
+					magick(self, cmd4);
+
+					// 然后将图片优化至相应目录
+					Sys(self, "rm -f ./temp/tmp.pngo");
+					Sys(self, "$HANDY_HOME/utils/ios/pngquant --ext .pngo ./temp/tmp.png");
+					// 将处理过的图片，移动到临时文件中缓存起来，避免下次再优化，导致时间太慢
+					Sys(self, "mv ./temp/tmp.pngo " + md5_path);
+				}
+
+				// 将缓存中的文件复制到项目中即可
+				cmd2 = cmd2.replace("$PATH", md5_path);
+				Sys(self, cmd2);
+				continue;
+			}
+
+			// 启动图也替换
+			idx1 = path33.indexOf("LaunchScreenBackground.png");
+			if(idx1 != -1) {
+				// 获取这个图片文件的宽高
+				var size = getImgSize(path33);
+				var w = size.get("width");
+				var h = size.get("height");
+				var r = w < h;// 是否需要旋转
+
+				cmd2 = cmd.replace("$NAME", path33);
+
+				w = "" + w;
+				h = "" + h;
+
+				var md5_path = path_33.replace("$P", md5_src_path2);
+				md5_path = md5_path.replace("$W", w);
+				md5_path = md5_path.replace("$H", h);
+
+				if(!fileExistsAtPath(md5_path)) {
+					if(r) {
+						cmd6 = cmd5.replace("$W", h);
+						cmd6 = cmd6.replace("$H", w);
+
+						Sys(self, "rm -f ./temp/tmp.png");
+						magick(self, cmd6);
+
+						// 往右旋转90 度
+						Sys(self, "rm -f ./temp/tmp2.png");
+						magick(self, cmd7);
+
+						// 然后将图片优化至相应目录
+						Sys(self, "rm -f ./temp/tmp2.pngo");
+						Sys(self, "$HANDY_HOME/utils/ios/pngquant --ext .pngo ./temp/tmp2.png --quality 10-10");
+
+						// 将处理过的图片，移动到临时文件中缓存起来，避免下次再优化，导致时间太慢
+						Sys(self, "mv ./temp/tmp2.pngo " + md5_path);
+					} else {
+						cmd6 = cmd5.replace("$W", w);
+						cmd6 = cmd6.replace("$H", h);
+
+						Sys(self, "rm -f ./temp/tmp.png");
+						magick(self, cmd6);
+						// 然后将图片优化至相应目录
+						Sys(self, "rm -f ./temp/tmp.pngo");
+						Sys(self, "$HANDY_HOME/utils/ios/pngquant --ext .pngo ./temp/tmp.png");
+
+						// 将处理过的图片，移动到临时文件中缓存起来，避免下次再优化，导致时间太慢
+						Sys(self, "mv ./temp/tmp.pngo " + md5_path);
+					}
+				}
+
+				// 将缓存中的文件复制到项目中即可
+				cmd2 = cmd2.replace("$PATH", md5_path);
+
+				Sys(self, cmd2);
+				continue;
+			}
+		}
+
+		// 将临时的图片删除先
+		Sys(self, "rm -f ./temp/tmp.png");
+		Sys(self, "rm -f ./temp/tmp.pngo");
+		Sys(self, "rm -f ./temp/tmp2.png");
+		Sys(self, "rm -f ./temp/tmp2.pngo");
+
+		// dump(groupValue, "groupValue");
+		// pause();
+
+		var ipa_keystore = groupValue.get("ipa_keystore");
+		if(!ipa_keystore) {
+			dump("ipa_keystore", "错误:缺少配置");
+			break;
+		}
+
+		// 开始编译ios包
+		Sys(self, strDebug(self, "rm -rf ../$DEBUG/ios"));
+
+		var package_name = groupValue.get("package_name");
+		// dump(package_name, "package_name");
+		// pause();
+
+		// 开始修改配置。。
+		var path34 = "../frameworks/runtime-src/proj.ios_mac/JBC.xcodeproj/project.pbxproj";
+		var content = readfile(path34, false);
+		content = content.replaceReg("(DevelopmentTeam|DEVELOPMENT_TEAM\\s+=\\s+).*?;", "$1" + ipa_keystore.get("DEVELOPMENT_TEAM") + ";");
+		content = content.replaceReg("(PROVISIONING_PROFILE_SPECIFIER\\s+=\\s+).*?;", "$1" + ipa_keystore.get("PROVISIONING_PROFILE") + ";");
+		content = content.replaceReg("(PRODUCT_BUNDLE_IDENTIFIER\\s+=\\s+).*?;", "$1" + package_name + ";");
+		content = content.replaceReg("(CODE_SIGN_IDENTITY\\s+=\\s+)\".*?\"?;", "$1\"" + ipa_keystore.get("CODE_SIGN_IDENTITY") + "\";");
+		if(!saveFile(path34, content, false)) {
+			break;
+		}
+		// 是否，bitcode编译。。只需要检测release即可
+		var content1 = content.replaceReg("Release(\\S|\\s)*?ENABLE_BITCODE\\s*=\\s*NO;", "");
+		var isYes = content.getLength() == content1.getLength();// 是否开启了 bitcode
+
+		// 创建文件到工程下
+		content = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>compileBitcode</key>\n\t<true/>\n\t<key>destination</key>\n\t<string>export</string>\n\t<key>method</key>\n\t<string>development</string>\n\t<key>provisioningProfiles</key>\n\t<dict>\n\t\t<key>com.poker.bole</key>\n\t\t<string>dev_bole</string>\n\t</dict>\n\t<key>signingCertificate</key>\n\t<string>0A63DF9908C8B920F1C0B83C7970995446CBE07D</string>\n\t<key>signingStyle</key>\n\t<string>manual</string>\n\t<key>stripSwiftSymbols</key>\n\t<true/>\n\t<key>teamID</key>\n\t<string>XZ7658JXRR</string>\n\t<key>thinning</key>\n\t<string>&lt;none&gt;</string>\n</dict>\n</plist>";
+		content = content.replaceReg("(<key>teamID</key>\\s*)<string>.*?</string>", "$1<string>" + ipa_keystore.get("DEVELOPMENT_TEAM") +"</string>");
+		content = content.replaceReg("(<key>signingCertificate</key>\\s*)<string>.*?</string>", "$1<string>" + ipa_keystore.get("SHA") +"</string>");
+		content = content.replaceReg("(<key>provisioningProfiles</key>\\s*<dict>\\s*)<key>.*?(</key>\\s*)<string>.*?(</string>\\s*</dict>)", "$1<key>" + package_name + "$2<string>" + ipa_keystore.get("PROVISIONING_PROFILE") + "$3");
+		content = content.replaceReg("(<key>method</key>\\s*<string>).*?</string>", "$1" + ipa_keystore.get("method") + "</string>");
+
+		content = content.replaceReg("(<key>compileBitcode</key>\\s*<).*?/>", isYes ? "$1true/>" : "$1false/>");
+
+		path34 = "../frameworks/runtime-src/proj.ios_mac/ios/exportOptions.plist";
+		if(!saveFile(path34, content, false)) {
+			dump(path34, "错误:存储失败");
+			break;
+		}
+		// pause();
+		// (DevelopmentTeam|DEVELOPMENT_TEAM)\s+=\s+.*?;
+
+		cmd = "$COCOS_CONSOLE_ROOT/cocos compile -p ios -m release --compile-script 0 --sign-identity \"$SIGN\"";
+		cmd = cmd.replace("$SIGN", ipa_keystore.get("CODE_SIGN_IDENTITY"));
+
+		Sys(self, cmd);
+
+		Sys(self, "rm -rf ./temp/proj.ios_src");
+		Sys(self, "mkdir -p ./temp/proj.ios_src");
+
+		trace("正在拆包...");
+		// 解压包
+
+		var path43 = target(self, strDebug(self, "../$DEBUG/ios/$TARGET.ipa"));
+		if(!fileExistsAtPath(path43)) {
+			dump(path43, "ios打包失败，找不到ipa包！");
+			break;
+		}
+		Sys(self, "unzip " + path43);
+
+		Sys(self, "cp -rf ./Payload ./temp/proj.ios_src/");
+		Sys(self, "rm -rf ./Payload");
+
+		// 将包中的res和src干掉，然后复制包外面的进来
+		Sys(self, target(self, "rm -rf ./temp/proj.ios_src/Payload/$TARGET.app/src"));
+		Sys(self, target(self, "rm -rf ./temp/proj.ios_src/Payload/$TARGET.app/res"));
+
+		trace("正在复制资源...");
+		// 复制指定项目的资源进行打包
+		var cmdx = "cp -rf ../res_#A ./temp/proj.ios_src/Payload/$TARGET.app/res";
+		cmdx = cmdx.replace("#A", self.get("cfgName"));
+		Sys(self, target(self, cmdx));
+
+		// 复制脚本到目录
+		Sys(self, target(self, "cp -rf ../src ./temp/proj.ios_src/Payload/$TARGET.app/src"));
+
+		// 首先切换标签。。
+		// 是否优化代码
+
+		var config = self.get("config");
+		var lua = config.get("lua");
+		var enabled_optimize = lua.get("enabled_optimize");
+		// if(!self.get("debug")) {
+		if(enabled_optimize) {// 如果启用了优化，则开始操作。
+			if(!optimizeSrc(self, target(self, "./temp/proj.ios_src/Payload/$TARGET.app/src"))) {// 开始优化脚本
+				break;
+			}
+		}
+		// 处理这个目录的文件
+		var enabled_pre_compile = lua.get("enabled_pre_compile");
+		if(enabled_pre_compile) {
+			var enabled_clear_rem = lua.get("enabled_clear_rem");
+
+			var cmd39 = target(self, "$HANDY_HOME/utils/ios/JppLua $CLS#A ./temp/proj.ios_src/Payload/$TARGET.app/src/.*.lua");
+			cmd39 = cmd39.replace("$CLS", enabled_clear_rem ? "-C" : "");
+			
+			var cmd33 = "";
+			if(self.containsKey("flags")) {
+				var flags = self.get("flags");
+				var iter3 = flags.iterator();
+				var flag;
+				while(iter3.hasNext()) {
+					flag = iter3.next();
+					cmd33 += " -D ";
+					cmd33 += flag;
+				}
+			}
+			cmd39 = cmd39.replace("#A", cmd33);
+			system(cmd39);
+
+			if(getReturnVal() != "0") {
+				dump("切换 lua 标签失败", "错误");
+				break;
+			}
+		}
+
+		if(self.get("pause")) {
+			// 把代码复制出来即可
+			Sys(self, "rm -rf ./temp/src");
+			Sys(self, target(self, "cp -rf ./temp/proj.ios_src/Payload/$TARGET.app/src ./temp/src"));
+			dump("./temp/src", "代码已复制到该目录下");
+		}
+
+		if(lua.get("enabled_encrypt")) {
+			trace("正在编译lua...");
+			cmd = target(self, "$COCOS_CONSOLE_ROOT/cocos luacompile -s ./temp/proj.ios_src/Payload/$TARGET.app/src -d ./temp/proj.ios_src/Payload/$TARGET.app/src2 -e -k #A -b #B --disable-compile");
+			var encrypt = lua.get("encrypt");
+			cmd = cmd.replace("#A", encrypt.get("key"));
+			cmd = cmd.replace("#B", encrypt.get("sign"));
+
+			Sys(self, cmd);
+			Sys(self, target(self, "rm -rf ./temp/proj.ios_src/Payload/$TARGET.app/src"));
+			Sys(self, target(self, "mv ./temp/proj.ios_src/Payload/$TARGET.app/src2 ./temp/proj.ios_src/Payload/$TARGET.app/src"));
+
+	    	Sys(self, target(self, "plutil -convert json ./temp/proj.ios_src/Payload/$TARGET.app/Info.plist"));
+		} else {
+			trace("不加密脚本...");
+			// 直接把脚本搞过去即可
+			Sys(self, target(self, "mv ./temp/proj.ios_src/Payload/$TARGET.app/src2 ./temp/proj.ios_src/Payload/$TARGET.app/src"));
+		}
+
+		result = true;
+	} while(false);
+	return result;
+}
+/*end*/
+
+function Sys(self, cmd) {
+	if(!self.get("showLog")) {
+		cmd += " >/dev/null 2>/dev/null";
+	}
+	system(cmd);
+}
+
+function pause() {
+	printStack();
+	trace("按任意键继续。。。记得回车。。。\n");
+	input();
+}
+
+// 遍历文件夹，包含文件夹。。。
+function ergodicAll_folder(self, dic) {
+	var result = null;
+	do {
+		var cmd = "#!/bin/bash\nfunction ergodic(){\nfor file in ` ls $1`\ndo\necho $1\"/\"$file >> out.txt\ndone\n}\nINIT_PATH=\"#B\"\nergodic $INIT_PATH";
+		cmd = cmd.replace("#B", dic);
+		if(!saveFile("temp.sh", cmd, false)) {
+			break;
+		}
+		Sys(self, "sh temp.sh");
+		Sys(self, "rm -f temp.sh");
+
+		if(fileExistsAtPath("out.txt")) {
+			var content = readfile("out.txt", false);
+			Sys(self, "rm -f out.txt");
+			if(!content) {
+				break;
+			}
+			var vec = new Vector();
+			splitString(vec, content, "\n");
+			if(vec.size() < 1) {
+				break;
+			}
+			result = vec;
+		}
+	} while(false);
+	return result;
+}
+
+// 获取指定目录下的所有文件夹名
+function ergodic_folder(self, dic) {
+	var result = null;
+	do {
+		var cmd = "#!/bin/bash\nfunction ergodic(){\nfor file in ` ls $1`\ndo\nif [ -d $1\"/\"$file ]\nthen\necho $1\"/\"$file >> out.txt\nfi\ndone\n}\nINIT_PATH=\"#B\"\nergodic $INIT_PATH";
+		cmd = cmd.replace("#B", dic);
+		if(!saveFile("temp.sh", cmd, false)) {
+			break;
+		}
+		Sys(self, "sh temp.sh");
+		Sys(self, "rm -f temp.sh");
+		var content = readfile("out.txt", false);
+		Sys(self, "rm -f out.txt");
+
+		if(!content) {
+			break;
+		}
+		var vec = new Vector();
+		splitString(vec, content, "\n");
+		if(vec.size() < 1) {
+			break;
+		}
+
+		result = vec;
+	} while(false);
+	return result;
+}
+
+function ergodicAll(self, dic) {
+	var result = null;
+	do {
+		var cmd = "#!/bin/bash\nfunction ergodic(){\nfor file in ` ls $1`\ndo\nif [ -d $1\"/\"$file ]\nthen\nergodic $1\"/\"$file\nelse\necho $1\"/\"$file >> out.txt\nfi\ndone\n}\nINIT_PATH=\"#B\"\nergodic $INIT_PATH";
+		cmd = cmd.replace("#B", dic);
+		if(!saveFile("temp.sh", cmd, false)) {
+			break;
+		}
+		Sys(self, "sh temp.sh");
+		var content = readfile("out.txt", false);
+		Sys(self, "rm -f out.txt");
+		if(!content) {
+			break;
+		}
+		var vec = new Vector();
+		splitString(vec, content, "\n");
+		if(vec.size() < 1) {
+			break;
+		}
+
+		result = vec;
+	} while(false);
+	return result;
+}
+
+// 删除所有空目录,包括子目录
+function clearAllEmptyDir(self, dic) {
+	var result = false;
+	do {
+		var cmd = "#!/bin/bash\nfunction is_empty_dir(){\nreturn `ls -A $1 | wc -w`\n}\nfunction ergodic(){\nfor file in ` ls $1`\ndo\nif [ -d $1\"/\"$file ]\nthen\nergodic $1\"/\"$file\nif is_empty_dir $1"/"$file\nthen\nrm -rf $1"/"$file\nfi\nfi\ndone\n}\nINIT_PATH=\"#B\"\nergodic $INIT_PATH";
+		cmd = cmd.replace("#B", dic);
+		Sys(self, dic);
+		result = true;
+	} while(false);
+	return result;
+}
+
+function ergodic_dir(self, dic) {
+	var result = null;
+	do {
+		var cmd = "#!/bin/bash\nfunction ergodic(){\nfor file in ` ls $1`\ndo\nif [ -d $1\"/\"$file ]\nthen\necho $1\"/\"$file >> out.txt\nergodic $1\"/\"$file\nfi\ndone\n}\nINIT_PATH=\"#B\"\nergodic $INIT_PATH";
+		cmd = cmd.replace("#B", dic);
+		// cmd = cmd.replace("#A", filetype);
+		if(!saveFile("temp.sh", cmd, false)) {
+			break;
+		}
+		Sys(self, "sh temp.sh");
+		Sys(self, "rm -f temp.sh");
+		var content = readfile("out.txt", false);
+		if(!content) {// 表示一个文件都没找到。。
+			break;
+		}
+		Sys(self, "rm -f out.txt");
+		if(!content) {
+			break;
+		}
+		var vec = new Vector();
+		splitString(vec, content, "\n");
+		if(vec.size() < 1) {
+			break;
+		}
+
+		result = vec;
+	} while(false);
+	return result;
+}
+
+/** 遍历文件夹
+	dic：目录
+	return：符合条件的文件路径
+*/
+function ergodic(self, dic, filetype) {
+	var result = null;
+	do {
+		var cmd = "#!/bin/bash\nfunction ergodic(){\nfor file in ` ls $1`\ndo\nif [ -d $1\"/\"$file ]\nthen\nergodic $1\"/\"$file\nelse\nlocal path=$1\"/\"$file\nif [ \"${file##*.}\" = \"#A\" ]; then\necho $1\"/\"$file >> out.txt\nfi\nfi\ndone\n}\nINIT_PATH=\"#B\"\nergodic $INIT_PATH";
+		cmd = cmd.replace("#B", dic);
+		cmd = cmd.replace("#A", filetype);
+		if(!saveFile("temp.sh", cmd, false)) {
+			break;
+		}
+		Sys(self, "sh temp.sh");
+		Sys(self, "rm -f temp.sh");
+		var content = readfile("out.txt", false);
+		if(!content) {// 表示一个文件都没找到。。
+			break;
+		}
+		Sys(self, "rm -f out.txt");
+		if(!content) {
+			break;
+		}
+		var vec = new Vector();
+		splitString(vec, content, "\n");
+		if(vec.size() < 1) {
+			break;
+		}
+
+		result = vec;
+	} while(false);
+	return result;
+}
+
+
+function saveFile(path, content, isUTF) {
+	var result = false;
+	do {
+		var file = new File();
+		if(!file.openFile(path, true)) {
+			dump(path, "写入文件失败：");
+			printStack();
+			break;
+		}
+		if(isUTF) {
+			file.writeAllStringByUTF(content);
+		} else {
+			file.writeAllString(content);
+		}
+		file.closeFile();
+		result = true;
+	} while(false);
+	return result;
+}
+
+/* 
+  打开文件，将内容读到 content 中 path 文件路径 content 存放文件内容 
+*/
+function readfile(path, isUtf) {
+	var content = false;
+	do {
+		var file = new File();
+		if(!file.openFile(path, false)) {
+			break;
+		}
+		content = isUtf ? file.readAllStringByUTF() : file.readAllString();
+		file.closeFile();
+	} while(false);
+	return content;
+}
+
+
+/* 读取json文件 */
+function readJson(path) {
+	var json = new Json();
+	return json.load(path);
+}
+
+/** 保存json，返回是否处理成功 */
+function saveJson(path, obj) {
+	var json = new Json();
+	var result = json.save(obj, path);
+	if(!result) {
+		dump(path, "写入文件失败：");
+		printStack();
+	}
+	return result;
+}

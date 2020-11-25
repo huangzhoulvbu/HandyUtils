@@ -1,0 +1,13 @@
+{
+	// 可以指定多个目录以及多种类型
+	"dir":"E:\\C_workspace\\handy_2.0",
+	"types":[".*\\.h$", ".*\\.cpp$"],
+	/*
+		ANSI
+		UTF-8,
+		UTF-8_nobom，// 无bom头
+		Unicode,
+		Unicode_big
+	*/
+	"to":"UTF-8"// 需要转换成那种编码
+}

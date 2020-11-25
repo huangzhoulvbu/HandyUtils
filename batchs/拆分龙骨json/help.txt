@@ -1,0 +1,1 @@
+将龙骨文件 .json和.png同时存放于src目录下，双击run.bat即可将图片拆分到output下

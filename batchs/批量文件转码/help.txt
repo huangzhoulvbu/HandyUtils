@@ -1,0 +1,9 @@
+本批处理功能为将批量文件进行转码
+在cfg.json中配置好即可操作
+
+支持如下几种编码
+ANSI
+UTF-8,
+UTF-8_nobom，// 无bom头
+Unicode,
+Unicode_big

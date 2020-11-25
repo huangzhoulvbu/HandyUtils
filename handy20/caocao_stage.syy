@@ -1,0 +1,846 @@
+/**
+ 这脚本的功能是，将曹操传的战斗脚本翻译成js脚本
+*/
+// 从10开始，表示整个文件的字节长度
+// 02 00 00 00 01 00 0e 00
+// 5-6 表示部分开始
+// 7-8 表示场景数据的长度
+
+var base = require("base")
+var self
+
+var byte
+var script_content = ""
+var val
+
+// var section_first
+var sub_event = false// 子事件，嵌套统计
+
+function main(argc) {
+	var err = 0
+	do {
+		self = base.readJson("cfg.json")
+		if(!self) {
+			dump("cfg.json", "打开文件失败")
+			break
+		}
+		if(err = process()) {
+			break
+		}
+	} while(false)
+	if(err) {
+		trace("程序非正常结束")
+	}
+}
+
+// 介绍
+// cl 是否跳过
+// function _intro(cl) {
+// 	byte.setPosition(byte.getPosition() + 2)// 跳过两个字节
+// 	val = byte.readString()
+// 	script_content += "// " + val + "\n"// 添加一条注释
+// 	if(cl) {
+// 		byte.setPosition(byte.getPosition() + 2)// 跳过两个字节
+// 	}
+// 	return script_content
+// }
+
+// 场景处理
+function _scene() {
+	// 遇到0，就over
+	// 如果后面直接是0，那就没什么事了
+	var section_n = byte.readShort()// 场景内部分的数量
+	byte.setPosition(byte.getPosition() + 2)// 跳过两个不知所云的字节
+	dump(section_n, "section_n")
+
+	for(var i = 0; i < section_n; i++) {
+		_section()
+	}
+
+	// byte.setPosition(byte.getPosition() + 4)// 跳过两个不知所云的字节
+}
+
+// 部分处理
+function _section() {
+	byte.setPosition(byte.getPosition() + 6)
+	val = byte.readString()
+	script_content += "// " + val + "\n"// 添加一条注释
+	script_content += "if("
+
+	var n = 0
+	while(true) {
+		if(_cmds()) {// 表示遇到0了，可以结束了
+			break
+		}
+		n++
+	}
+	if(n == 0) {
+		script_content += "true) {\n"// 无条件成立
+	} else {
+		script_content = script_content[0:-2]// 舍弃后面的两个&&
+		script_content += ") {\n"// 表示内部有条件限制
+	}
+	byte.setPosition(byte.getPosition() + 2)
+
+	// 内部的指令
+	while(true) {
+		if(_cmds()) {
+			break
+		}
+	}
+	script_content += "}\n"
+
+
+}
+
+// 处理指令
+function _cmds() {
+	var ret = 0
+	var first
+
+	var key = byte.readShort()
+
+	dump(key, "key")
+	switch(key) {
+	case 0:// 事件结束
+		// 添加事件结束
+		if(sub_event) {
+			sub_event = false
+			script_content += "}\n"
+		} else {
+			ret = 1// 表示结束了
+		}
+		break
+	case 1:// 子事件设定
+		sub_event = true
+		script_content += "{\n"// 起始就是一个 域
+		break
+	case 2:// 内部信息
+		byte.setPosition(byte.getPosition() + 2)// 跳过两个字节
+		val = byte.readString()
+		script_content += "// "
+		script_content += val
+		script_content += "\n"// 添加一条注释
+		byte.setPosition(byte.getPosition() + 2)// 跳过两个字节
+		break
+	case 5:// 变量测试
+		// 变量测试
+		byte.setPosition(byte.getPosition() + 2)
+
+		var n = byte.readShort()// 获取true测试的个数
+		if(n > 0) {
+			var first3 = true
+			for(var i = 0; i < n; i++) {
+				if(first3) {
+					first3 = false
+				} else {
+					script_content += "&&"
+				}
+				val = byte.readShort()
+				script_content += "vars[" 
+				script_content += val
+				script_content += "]"
+			}
+			script_content += "&&"
+		}
+
+		byte.setPosition(byte.getPosition() + 2)
+		n = byte.readShort()
+		if(n > 0) {
+
+			var first3 = true
+			for(var i = 0; i < n; i++) {
+				if(first3) {
+					first3 = false
+				} else {
+					script_content += "&&"
+				}
+				val = byte.readShort()
+				script_content += "!vars[" 
+				script_content += val
+				script_content += "]"
+			}
+		}
+		script_content += "&&"
+		break
+	case 8:// 菜单处理
+		script_content += "setMenu("
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()
+		script_content += val
+		script_content += ")\n"
+		break
+	case 9:// 延时
+		script_content += "delay("
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()
+		script_content += val
+		script_content += ")\n"
+		byte.setPosition(byte.getPosition() + 2)
+		break
+	case 0xB:// 变量赋值
+		script_content += "setVar("
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readInt()
+		script_content += val
+		script_content += ","
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()
+		script_content += val
+		script_content += ")\n"// false 或 true，只能设置
+
+		break
+	// case 0x12:// 场景开始
+	// 	// 跳过长度
+	// 	// script_content += "function scene() {\n"
+
+	// 	byte.setPosition(byte.getPosition() + 2)// 跳过两个字节
+	// 	// script_content = _intro(false)
+	// 	break
+	case 0x14:// 对话
+		script_content += "say("
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readString()
+		val = val.replaceAll("\n", "\\n")
+		script_content += "\""
+		script_content += val
+		script_content += "\")\n"
+		break
+	case 0x15:// 对话2
+		script_content += "say2("
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 武将索引1
+		script_content += val
+		script_content += ","
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 武将索引2
+		script_content += val
+		script_content += ","
+		
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readString()
+		val = val.replaceAll("\n", "\\n")
+		script_content += "\""
+		script_content += val
+		script_content += "\")\n"
+
+
+		break
+	case 0x19:// 胜利条件
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readString()
+		val = val.replaceAll("\n", "\\n")	
+		script_content += "\""
+		script_content += val
+		script_content += "\")\n"
+		break
+	case 0x1c:// 绘图
+		script_content += "draw()\n"
+		break
+	case 0x21:// 战场物体添加
+		script_content += "addFightItems("
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readInt()// x
+		script_content += val
+		script_content += ","
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readInt()// y
+		script_content += val
+		script_content += ","
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 参数 0防火 1恢复
+		script_content += val
+		script_content += ","
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 未知
+		script_content += val
+		script_content += ","
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 未知
+		script_content += val
+		script_content += ")\n"
+		break
+	case 0x23:// 音效
+		script_content += "soundEffect("
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 音效
+		script_content += val
+		script_content += ","
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readInt()// para4
+		script_content += val
+		script_content += ")\n"
+
+		break
+	case 0x24:// cd音轨 track8
+		byte.setPosition(byte.getPosition() + 2)
+		script_content += "setSound("
+		val = byte.readShort()
+		script_content += val
+		script_content += ")\n"
+		break
+	case 0x27:// 背景显示
+		script_content += "setBg("// 设置我军出场
+		byte.setPosition(byte.getPosition() + 2)// 跳过两个字节
+		val = byte.readShort()
+		script_content += val// 场景类型  外场景、中国地图、内场景、战场地图
+		script_content += ","
+		byte.setPosition(byte.getPosition() + 2)// 跳过两个字节
+		val = byte.readShort()
+		script_content += val// 外场景
+		script_content += ","
+		byte.setPosition(byte.getPosition() + 2)// 跳过两个字节
+		val = byte.readShort()
+		script_content += val// 中国地图
+		script_content += ","
+		byte.setPosition(byte.getPosition() + 2)// 跳过两个字节
+		val = byte.readShort()
+		script_content += val// 内场景
+		script_content += ","
+		byte.setPosition(byte.getPosition() + 2)// 跳过两个字节
+		val = byte.readShort()
+		script_content += val// 战场地图
+		script_content += ")\n"
+		break
+	case 0x32:// 武将移动
+		script_content += "moveCharacter("// 移动武将
+		byte.setPosition(byte.getPosition() + 2)// 0、武将 1、位置索引
+		val = byte.readShort()
+		script_content += val
+		script_content += ","
+
+		byte.setPosition(byte.getPosition() + 2)// 武将
+		val = byte.readShort()
+		script_content += val
+		script_content += ","
+
+		byte.setPosition(byte.getPosition() + 2)// 索引
+		val = byte.readInt()
+		script_content += val
+		script_content += ","
+
+		byte.setPosition(byte.getPosition() + 2)// x
+		val = byte.readInt()
+		script_content += val
+		script_content += ","
+
+		byte.setPosition(byte.getPosition() + 2)// y
+		val = byte.readInt()
+		script_content += val
+		script_content += ","
+
+		byte.setPosition(byte.getPosition() + 2)// 朝向 0：北、东、南、西
+		val = byte.readShort()
+		script_content += val
+		script_content += ")\n"
+
+		break
+	case 0x3F: {
+		// if(section_first) {
+		// 	section_first = false
+		// } else {
+		// 	script_content += " && "
+		// }
+		script_content += "round()"// 回合判断
+
+		byte.setPosition(byte.getPosition() + 2)// 跳过两个字节
+		var val2 = byte.readInt()
+
+		byte.setPosition(byte.getPosition() + 2)// 跳过两个字节
+		val = byte.readShort()
+
+		if(val == 0) {
+			script_content += ">="
+		} else if(val == 1) {
+			script_content += "<"
+		} else if(val == 2) {
+			script_content += "=="
+		}
+		script_content += val2
+		script_content += "&&"
+	}
+		break
+	case 0x40:// 行动方测试
+		// 0：我军、1：友军、2：敌军
+		script_content += "curOper()=="// 返回当前行动方
+		byte.setPosition(byte.getPosition() + 2)// 跳过两个字节
+		val = byte.readShort()
+		script_content += val
+		script_content += "&&"
+
+		break
+	case 0x4A: {// 我军出场强制设定
+		// 不管那些花里胡哨的，
+		// 先跳过6个字节，不知道干啥的
+		byte.setPosition(byte.getPosition() + 6)// 跳过两个字节
+
+		script_content += "setOurArmy("// 设置我军出场
+		first = true
+		for(var i = 0; i < 10; i++) {
+			// 38\39也没什么用，跳过
+			byte.setPosition(byte.getPosition() + 2)// 跳过两个字节
+			val = byte.readShort()// 如果为FF，表示没有限制
+			if(first) {
+				first = false
+			} else {
+				script_content += ","
+			}
+			script_content += val
+		}
+		script_content += ")\n"
+		}
+		break
+	case 0x44: // 战斗初始化
+		script_content += "initFight()\n"
+		break
+	case 0x45:// 战场全局变量
+		byte.setPosition(byte.getPosition() + 10)
+		// 有10个字节不知道干啥的
+		script_content += "setFightGlobal("// 
+		val = byte.readInt()
+		script_content += val// 最大回合数
+		script_content += ","
+
+		// 等级加成
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()
+		if(val > 50) {
+			val = 50 - val	// 变成负数
+		}
+		script_content += val
+		script_content += ","
+		byte.setPosition(byte.getPosition() + 6)
+
+		val = byte.readShort()
+		script_content += val// 敌方主将
+		script_content += ","
+		byte.setPosition(byte.getPosition() + 6)
+
+
+		val = byte.readShort()
+		script_content += val// 我方主将
+		script_content += ","
+		byte.setPosition(byte.getPosition() + 2)
+
+		val = byte.readShort()
+		script_content += val // 天气类别 (0~4 普通、晴好、阴雨、小雪、大雪)
+		script_content += ","
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()
+		script_content += val // 起始天气 (0~5 晴、晴晴阴晴阴、晴晴雨阴雪、阴晴雨阴雪、雨阴豪雨雪雪、豪雨雨豪雨雪雪)
+		script_content += ")\n"
+		break
+	case 0x46:// 友军
+		script_content = _roleInfo(false)
+		break
+	case 0x47:// 敌军
+		script_content = _roleInfo(true)
+		break
+	case 0x48:// 个人装备设定
+		script_content += "setEquip("// 设置装备
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 角色
+		script_content += val // 
+		script_content += ","
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 武器 -1表示默认武器
+		script_content += val // 
+		script_content += ","
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 武器等级 -1表示默认等级
+		script_content += val // 
+		script_content += ","
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 防具 -1表示默认防具
+		script_content += val // 
+		script_content += ","
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 防具等级 -1表示默认等级
+		script_content += val // 
+		script_content += ","
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 辅助
+		script_content += val // 
+		script_content += ")\n"
+
+		byte.setPosition(byte.getPosition() + 2)
+
+		break
+	case 0x4b:// 我军出场设定
+		script_content += "addMine("// 
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readInt()// 位置索引
+		script_content += val
+		script_content += ","
+
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readInt()// x
+		script_content += val
+		script_content += ","
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readInt()// y
+		script_content += val
+		script_content += ","
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 方向 北、东、南、西
+		script_content += val
+		script_content += ","
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 隐藏 1、隐藏 0、不隐藏
+		script_content += val
+		script_content += ")\n"
+
+		break
+	case 0x4C:// 隐藏武将出现
+		script_content += "showCharacter("
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 索引方式 0：武将 1：位置
+		script_content += val
+		script_content += ","
+
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()//武将
+		script_content += val
+		script_content += ","
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readInt()// 位置
+		script_content += val
+
+		script_content += ")\n"
+		break
+	case 0x4d:// 武将状态变更
+		script_content += "setRoleState("
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 搜索武将的方式
+		script_content += val
+		script_content += ","
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 武将索引
+		script_content += val
+		script_content += ","
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readInt()// 位置索引
+		script_content += val
+		script_content += ","
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readInt()// 左
+		script_content += val
+		script_content += ","
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readInt()// 上
+		script_content += val
+		script_content += ","
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readInt()// 宽
+		script_content += val
+		script_content += ","
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readInt()// 高
+		script_content += val
+		script_content += ","
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 战斗方  我、友、敌、援、我军及友军、敌军及援军、所有部队  只针对区域有效
+		script_content += val
+		script_content += ","
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 属性 att、def、spr、cri、mor、speed、无
+		script_content += val
+		script_content += ","
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 变化 下降、正常、上升、无
+		script_content += val
+		script_content += ","
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 状态 麻痹2、封咒4、混乱8、中毒16、取消麻痹0x82、取消中毒0x90,也就是说，负数就是取消的概念
+		script_content += val
+		script_content += ","
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readInt()// 减去HP
+		script_content += val
+		script_content += ","
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readInt()// 减去MP
+		script_content += val
+		script_content += ")\n"
+		break
+	case 0x4f:// 战场转向设置
+		script_content += "setFightTurn("
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 武将1
+		script_content += val
+		script_content += ","
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 武将2
+		script_content += val
+		script_content += ","
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 朝向
+		script_content += val
+		script_content += ","
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 不转向
+		script_content += val
+		script_content += ","
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 动作前延迟
+		script_content += val
+		script_content += ","
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 动作后延迟
+		script_content += val
+		script_content += ")\n"
+
+		break
+	case 0x50:// 战场动作设定
+		script_content += "setAnime("
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 武将
+		script_content += val
+		script_content += ","
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 战场动作
+		script_content += val
+		script_content += ","
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 动作前延迟
+		script_content += val
+		script_content += ","
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 动作后延迟
+		script_content += val
+		script_content += ")\n"
+
+		break
+	case 0x53:// 战场撤退
+		script_content += "retreat("
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 1、单人 2、区域
+		script_content += val
+		script_content += ","
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 武将
+		script_content += val
+		script_content += ","
+
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readInt()// x1
+		script_content += val
+		script_content += ","
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readInt()// y1
+		script_content += val
+		script_content += ","
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readInt()// x2
+		script_content += val
+		script_content += ","
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readInt()// y2
+		script_content += val
+		script_content += ","
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 战斗方
+		script_content += val
+		script_content += ","
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 是否死亡 1、死亡 0、撤退
+		script_content += val
+		script_content += ")\n"
+
+		break
+	case 0x6b:// 法术
+		script_content += "magic("
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readInt()// x
+		script_content += val
+		script_content += ","
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readInt()// y
+		script_content += val
+		script_content += ","
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// index 法术
+		script_content += val
+		script_content += ","
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 未知
+		script_content += val
+		script_content += ")\n"
+
+		break
+	default:
+	trace(script_content)
+		base.pause()
+		break
+	}
+	return ret
+}
+
+function process() {
+	var err = 0
+	do {
+		// 开始打开文件
+		trace("请输入待处理的脚本文件:")
+		var path = self.path
+		if(!path) {
+			dump("配置中缺少path属性", "错误")
+			break
+		}
+		byte = new ByteArray()
+		if(err = byte.open(path)) {// 打开失败，就直接无视
+			break
+		}
+		var head = byte.readString()
+		if(head != "EEX") {
+			dump("打开的非eex文件", "错误")
+			err = 1
+			break
+		}
+
+		byte.setPosition(0xA)
+
+		// 自动分析场景个数
+		var scene_n = 0
+		var max = 0
+		while(true) {
+			val = byte.readShort()
+			byte.setPosition(byte.getPosition() - 2)
+			if(val < max) {// 有个数比之前的小，就表示场景的起始位置都读取完毕
+				break
+			}
+			max = val
+			// 退回去
+			dump(byte.readInt(), "----------------读取场景数据的起始位置--------")
+			scene_n++
+		}
+
+		// for(var i = 0; i < scene_n; i++) {// 无视长度
+		// 	byte.readInt()
+		// }
+
+		dump(scene_n, "场景个数")
+
+		// 处理多个场景
+		for(var i = 0; i < scene_n; i++) {
+			_scene()
+		}
+
+
+	} while(false)
+	return err
+}
+
+function _roleInfo(key) {
+	val = key ? "setEnemys([" : "setFriends([" 
+	script_content += val// 设置友军  一个二维数组完事
+
+
+	var n = key ? 80 : 20
+	var ary1 = []
+	var add
+	for(var i = 0; i < n; i++) {// 最多20个友军
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 武将索引
+
+		add = val != -1
+
+		var ary2 = []
+		ary2.add(val)
+
+		if(key) {// 敌人时，才有这个援军的选项
+			byte.setPosition(byte.getPosition() + 2)
+			val = byte.readShort() // 援军 1 是援军，0不是援军
+			ary2.add(val)
+		}
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort() // 隐藏
+		ary2.add(val)
+
+		byte.setPosition(byte.getPosition() + 2)
+
+		val = byte.readInt()// x坐标
+		ary2.add(val)
+		byte.setPosition(byte.getPosition() + 2)
+
+		val = byte.readInt()// y坐标
+		ary2.add(val)
+		byte.setPosition(byte.getPosition() + 2)
+
+		val = byte.readShort()// 朝向（北、东、南、西）
+		ary2.add(val)
+		byte.setPosition(byte.getPosition() + 2)
+
+		val = byte.readShort()// 等级加成
+		if(val > 50) {
+			val = 50 - val
+		}
+		ary2.add(val)
+
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 兵种等级限制 初、中、高级
+		ary2.add(val)
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()//AI  0被动出击、1主动出击、2坚守原地、3攻击武将、4到指定点、5跟随武将、6逃至指定点
+		ary2.add(val)
+
+		byte.setPosition(byte.getPosition() + 2)// 目标武将，没有就是-1
+		val = byte.readShort()
+		ary2.add(val)
+
+		byte.setPosition(byte.getPosition() + 12)// 这段内存不知道干啥的，无脑跳过即可
+
+		if(add) {// 表示后续无武将了，直接无视即可
+			ary1.add(ary2)
+		}
+	}
+
+	val = Json.toString(ary1)
+	script_content += val
+	script_content += ")\n"
+	return script_content
+}
+
+main(os.args())

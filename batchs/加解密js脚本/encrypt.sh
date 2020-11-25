@@ -1,0 +1,1 @@
+python /Users/huangzhou/Documents/cocos2d_tools/handy/handy/utils/cocos-jsc-endecryptor-2.0/edc.py encrypt -p ./cocos2d-jsb.js -k RenZh0ngLvbu7

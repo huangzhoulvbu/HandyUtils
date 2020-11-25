@@ -1,0 +1,7 @@
+{
+	"oper":"modify",// modify修改工程中指定目录下的图片的meta内的uid
+	// "oper":"split",// split 拆分plist图片
+	"path2":"E:/document/Cocos2dWorkspace/pdk/assets/res/res/Common/player/common_playerAndBtnLayer",// 统计修改所属目录，应该把第一步拆分出来的碎图放到工程中，等他生成meta之后，再执行批处理
+	"path":"E:/document/Cocos2dWorkspace/pdk/assets/res/res/Common/player/common_playerAndBtnLayer.plist.meta"// 待处理的plist.meat的文件路径，拆分步骤所需
+
+}

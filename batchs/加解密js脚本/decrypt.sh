@@ -1,0 +1,1 @@
+$HANDY_HOME/utils/cocos-jsc-endecryptor-2.0/edc.py decrypt -p ./project.jsc -k RenZh0ngLvbu7

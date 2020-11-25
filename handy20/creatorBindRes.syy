@@ -1,0 +1,155 @@
+/*
+	CososCreator 给某个预制或场景绑定资源用的，
+	使用前，先定义好绑定的变量，否则会报错。
+*/
+var base = require("base")
+function main(argc) {
+	var err = 0
+	do {
+		if(err = process()) break
+	} while(false)
+	if(err) {
+		trace("程序非正常结束")
+	}
+}
+
+function sort(files, func) {
+	var size = files.length
+	for(var i = 0; i < size - 1; i++) {
+		for(var j = i + 1; j < size; j++) {
+			if(func(files[i], files[j])) {
+				files.swap(i, j)
+			}
+		}
+	}
+}
+
+function process() {
+	var err = 0
+	do {
+		var cfg = base.readJson("cfg.json")
+
+		if(!cfg.have("dir")) {
+			dump("dir", "配置中缺少目录")
+			err = 1
+			break
+		}
+		if(!cfg.have("type")) {
+			dump("type", "配置中缺少文件扩展名")
+			err = 1
+			break
+		}
+		if(!cfg.have("sort")) {
+			dump("sort", "配置中未指定排序方式")
+			err = 1
+			break
+		}
+
+		var dir = cfg.dir
+		var type = cfg.type
+		var sortType = cfg.sort
+
+		var list = []
+		FileUtils.dirlist(dir, list, type, FileUtils.DL_FILE)
+
+		if(list.length < 1) {
+			dump(dir, "找不到任何符合条件的文件")
+			err = 1
+			break
+		}
+
+		if(sortType > 0) {
+			// 获取文件名
+			var fileNumber = []
+			var idx
+			for(var _, v of list) {
+				idx = v.lastIndexOf('/')
+				if(idx == -1) {
+					dump("路径中找不到'/'")
+					err = 1
+					break
+				}
+				var path = v.substr(idx + 1)
+
+				var vec = path.matchReg("\\d+")
+				if(vec.length == 0) {
+					dump("文件名中没有数字，请改变排序方式")
+					err = 1
+					break
+				} 
+				if(sortType == 1) {
+					fileNumber.add(Integer.parseInt(vec[0]))	
+				} else {
+					fileNumber.add(Integer.parseInt(vec[-1]))// 获取最后一个元素
+				}
+				// 将匹配到的数字添加到内部
+			}
+		
+			var hash = {}
+			for(var i, v of fileNumber) {
+				hash[Integer.parseStr(v)] = list[i]
+			}
+
+			sort(fileNumber, function(a, b) {
+				return a > b
+			})
+
+			for(var i, v of fileNumber) {
+				list[i] = hash[Integer.parseStr(v)]// 获取对应的路径
+			}
+
+		} else {
+			sort(list, function(a, b) {
+					return a.compare(b) > 0
+				})
+		}
+
+		var path
+		var idx
+		var idx1
+		var err = false
+		var content
+		var str
+		var uuids = []
+		for(var _, path of list) {
+			// 获取了meta文件
+			path += ".meta"
+			path = path.replaceAll("\\", "/")
+
+			if(!FileUtils.exist(path)) {
+				dump(path, "未找到文件对应的.meta文件")
+				err = true
+				break
+			}
+
+			content = FileUtils.readfile(path)
+			idx = content.indexOf("\"subMetas\"")
+			if(idx == -1) idx = 0
+
+			idx = content.indexOf("\"uuid\"", idx)
+			if(idx == -1) {
+				dump(path, "找不到uuid")
+				err = true
+				break
+			}
+			idx += 6
+
+			idx = content.indexOf("\"", idx)// 找寻第一个引号
+			idx++
+			idx1 = content.indexOf("\"", idx)
+			str = content.substr(idx, idx1)
+
+			uuids.add( {__uuid__:str})
+		}
+		if(err) break
+
+		if(err = base.saveJson("export.json", uuids)) {
+			dump(path, "存储文件失败")
+			break
+		}
+
+	} while(false)
+	return err
+}
+
+main(os.args())

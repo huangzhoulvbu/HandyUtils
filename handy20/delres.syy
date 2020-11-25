@@ -1,0 +1,30 @@
+// 构建后，删除creator工程中未使用的垃圾资源文件
+var base = require("base")
+function main(args) {
+	var allfile = []
+	FileUtils.dirlist("../build/jsb-default/res/raw-assets", allfile)
+	var hash = {}
+	for(var i, path of allfile) {
+		path = path[path.lastIndexOf('/') + 1 : path.lastIndexOf('.')]
+		hash[path] = true
+	}
+	var allfile2 = []
+	FileUtils.dirlist("../assets/res", allfile2)
+	var js
+	for(var i2, path2 of allfile2) {
+		if(path2.lastIndexOf(".png.") != -1 || path2.lastIndexOf(".jpg.") != -1) {
+			js = base.readJson(path2)
+			if(!hash.have(js.uuid)) {
+				dump(path2, "path")
+				var path3 = path2[:path2.lastIndexOf(".png.")]
+				FileUtils.remove(path3 + ".png")
+				FileUtils.remove(path3 + ".png.meta")
+				FileUtils.remove(path3 + ".plist")
+				FileUtils.remove(path3 + ".plist.meta")
+			}
+			
+		}
+	}
+}
+
+main(os.args())

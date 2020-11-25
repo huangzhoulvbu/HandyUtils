@@ -1,0 +1,19 @@
+function main(argc) {
+	trace("请输入路径:");
+	var dir = input();
+	trace("请输入前缀:");
+	var pix = input();
+	var list = ergodicAll(dir);
+	var cmd = "ren $path $filename.png";
+	var cmd2;
+	var path;
+	for(var i = 0; i < list.size(); i++) {
+		path = list.get(i);
+		if(path.indexOf(".png") == -1) {
+			continue;
+		}
+		cmd2 = cmd.replace("$path", list.get(i));
+		cmd2 = cmd2.replace("$filename", pix + "_" + (i + 1));
+		system(cmd2);
+	}
+}

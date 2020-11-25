@@ -1,0 +1,211 @@
+// 只能在linux上运行，centos8上执行的。。专门用来创建svn项目，开放端口的。
+// 本脚本是负责在centos8上执行创建svn项目的脚本工具
+// 功能有创建脚本，copy权限，导入初始目录结构。开放端口等等功能，避免每次都繁杂的操作
+// 注意要在脚本所在目录执行才行。。
+function main(argc) {
+	var result = false;
+	do {
+		var self = new HashMap();
+
+		var cfg = readJson("cfg.json");
+		if(!cfg) {
+			/*
+			{
+				"username":"huangzhou",// 用户名
+				"passwd":"lvbu123",// 用户密码
+				"import_folder":"123",// 导入的文件夹名，需在当前目录下
+			}
+			*/
+			dump("读取配置信息失败");
+			break;
+		}
+		self.put("cfg", cfg);
+
+		print("请输入svn项目名:");
+		var projName = input();
+		if(projName.getLength() == 0) {
+			trace("项目名必须");
+			break;
+		}
+		self.put("projName", projName);
+
+		print("请输入项目端口:");
+		var port = input();
+		if(port.getLength() == 0) {
+			trace("端口不能为空");
+			break;
+		}
+		if(!isNumber(port)) {
+			trace("端口必须是个数字");
+			break;
+		}
+		self.put("port", port);
+
+		if(!process(self)) {
+			break;
+		}
+		result = true;
+	} while(false);
+	if(!result) {
+		trace("程序非正常结束");
+	}
+}
+
+function process(self) {
+	var result = false;
+	do {
+		var cfg = self.get("cfg");
+		// 创建目录
+		var path = "$PWD/$PROJ_NAME";
+		path = path.replace("$PWD", cfg.get("svn_home"));
+		path = path.replace("$PROJ_NAME", self.get("projName"));
+
+		if(fileExistsAtPath(path)) {
+			dump(path, "目录已经存在");
+			break;
+		}
+
+		var cmd = "svnadmin create $PATH";
+		cmd = cmd.replace("$PATH", path);
+		trace(cmd);
+		system(cmd);
+
+		// 删除配置文件夹
+		cmd = "rm -rf $PWD/$PROJ_NAME/conf";
+		cmd = cmd.replace("$PWD", cfg.get("svn_home"));
+		cmd = cmd.replace("$PROJ_NAME", self.get("projName"));
+		trace(cmd);
+		system(cmd);
+
+		// 刷新配置
+		cmd = "cp -rf ./conf $PWD/$PROJ_NAME2/conf";
+		cmd = cmd.replace("$PWD", cfg.get("svn_home"));
+		cmd = cmd.replace("$PROJ_NAME2", self.get("projName"));
+		trace(cmd);
+		system(cmd);
+
+		// 启动监听
+		if(cfg.get("force_kill_server")) {
+			system("killall svnserve");
+		}
+		
+		cmd = "svnserve -d --listen-port $PORT -r $PATH";
+		cmd = cmd.replace("$PATH", path);
+		cmd = cmd.replace("$PORT", self.get("port"));
+		var cmd_3 = cmd;// 将命令存起来，将要添加到svn.sh后面
+		trace(cmd);
+		system(cmd);// 监听端口，开始导入
+
+		// 开始导入
+		cmd = "svn import ./123 svn://localhost:$PORT/$PROJ_NAME -m \"initial import\" --username $USERNAME --password $PASSWD";
+		cmd = cmd.replace("$PORT", self.get("port"));
+		cmd = cmd.replace("$PROJ_NAME", self.get("projName"));
+		cmd = cmd.replace("$USERNAME", cfg.get("username"));
+		cmd = cmd.replace("$PASSWD", cfg.get("passwd"));
+		trace(cmd);
+		system(cmd);// 导入到svn项目中
+
+		// 修正svn.sh，就是将命令添加进去即可
+		var content = readfile("../svn.sh", false);
+		if(!content) {
+			dump("../svn.sh", "打开文件失败失败");
+			break;
+		}
+		if(content.indexOf(cmd_3) == -1) {// 如果有了，就不添加
+			content += "\n";
+			content += cmd_3;// 将新增的svn放入
+			if(!saveFile("../svn.sh", content, false)) {
+				dump("../svn.sh", "存储文件失败");
+				break;
+			}
+		} else {
+			trace("服务已添加，无视!");
+		}
+
+		/*if new_os then*`
+		// 将端口开放即可
+		cmd = "firewall-cmd --permanent --add-port=$PORT/tcp";
+		cmd = cmd.replace("$PORT", self.get("port"));
+		system(cmd);
+		system("firewall-cmd --reload");// 重启防护墙
+		/*else*/
+		// 此时，表示旧的方式启动防火墙
+		path = "/etc/sysconfig/iptables";
+		content = readfile(path, false);
+		if(!content) {
+			dump(path, "打开文件失败");
+			break;
+		}
+		var idx = content.indexOf("-A FORWARD -j REJECT");
+		if(idx == -1) {// 未找到，就结束了
+			dump("找不到-A FORWARD -j REJECT", "错误");
+			break;
+		}
+		cmd = "-A INPUT -m state --state NEW -m tcp -p tcp --dport $PORT -j ACCEPT\n";
+		cmd = cmd.replace("$PORT", self.get("port"));
+		if(content.indexOf(cmd) == -1) {
+			content = content.insert(cmd, idx);
+			if(!saveFile(path, content, false)) {// 存储文件
+				break;
+			}
+		} else {
+			trace("端口已开放，无视!");
+		}
+		// 重启防火墙
+		system("service iptables restart");
+		/*end*/
+		result = true;
+	} while(false);
+	return result;
+}
+
+function saveFile(path, content, isUTF) {
+    var result = false;
+    do {
+        var file = new File();
+        if(!file.openFile(path, true)) {
+            trace("打开文件失败，写入失败！");
+            break;
+        }
+        if(isUTF) {
+            file.writeAllStringByUTF(content);
+        } else {
+            file.writeAllString(content);
+        }
+        file.closeFile();
+        result = true;
+    } while(false);
+    return result;
+}
+
+/* 
+  打开文件，将内容读到 content 中 path 文件路径 content 存放文件内容 
+*/
+function readfile(path, isUtf) {
+    var content = false;
+    do {
+        var file = new File();
+        if(!file.openFile(path, false)) {
+            break;
+        }
+        content = isUtf ? file.readAllStringByUTF() : file.readAllString();
+        file.closeFile();
+    } while(false);
+    return content;
+}
+
+/* 读取json文件 */
+function readJson(path) {
+    var json = new Json();
+    return json.load(path);
+}
+
+/** 保存json，返回是否处理成功 */
+function saveJson(path, obj) {
+    var json = new Json();
+    var result = json.save(obj, path);
+    if(!result) {
+        trace("写入" + path + "时出错！");
+    }
+    return result;
+}

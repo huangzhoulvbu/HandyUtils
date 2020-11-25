@@ -1,0 +1,6 @@
+将需要处理的图片放到当前目录下，确保有且只有一张图片。
+双击run.bat运行，
+处理完的图片放到icons目录下。
+该批处理只能在windows下运行。
+
+运行该批处理前，请点击https://www.imagemagick.org/download/binaries/ImageMagick-7.0.4-8-Q16-x64-dll.exe下载这个并安装

@@ -1,0 +1,523 @@
+// js版本更新拆分批处理
+var base = require("base")
+var self = {}
+function main(argc) {
+	var err = 0
+	do {
+		if(err = process1(argc)) {
+			trace("->1")
+			break
+		}
+
+		if(self.rollback) {
+			err = process4()
+			break
+		}
+
+		// 拆分包到指定目录
+		if(err = process2()) {
+			trace("->2")
+			break
+		}
+
+		if(err = process5()) {
+			trace("->5")
+			break
+		}
+
+		if(err = process6()) {
+			trace("->6")
+			break
+		}
+
+	} while(false)
+	if(err) {
+		trace("程序非正常结束！")
+	} else {
+		trace("一切顺利~")
+	}
+}
+
+// 善后处理
+function process6() {
+	var err = 0
+	do {
+		// 删除中间文件
+		FileUtils.rmdir("./temp/apk")
+
+		// 删除拆包数据
+		FileUtils.rmdir("./temp/subPackage")
+
+		FileUtils.rmdir("./temp/diff")
+
+		// 将当前版本存入
+		var versions = self.cfg.versions
+		versions.add(self.curVersion)
+
+		// 将配置文件写入
+		var path = "./temp/apks/cfg.json"
+
+		if(err = base.saveJson(path, self.cfg)) {
+			dump(path, "写入文件失败！")
+			break
+		}
+	} while(false)
+	return err
+}
+
+// 开始处理
+function process5() {
+	var err = false
+	do {
+		// 解压至文件夹
+		FileUtils.rmdir("./temp/apk")
+        var cmd = "unzip #A -d ./temp/apk"
+        cmd = cmd.replaceAll("#A", self.apk_path)
+		if(err = Sys(cmd)) break
+
+		// 复制到指定渠道即可
+		var cfg = self.cfg
+		var maxVersion = cfg.maxVersion
+
+		// 获取最大版本后，开始复制 apks/
+		FileUtils.rmdir("./temp/apks/" + maxVersion)
+
+		FileUtils.copytree("./temp/apk/assets", "./temp/apks/" + maxVersion)
+
+		// 开始获取历史版本，开始比较
+		var versions = cfg.versions
+		self.curVersion = maxVersion
+
+		FileUtils.rmdir("./output/update/" + maxVersion)
+
+		for(var i = versions.length - 1; i >= 0; i--) {
+			if(err = process7(maxVersion, versions[i])) break
+		}
+		if(err) break
+
+		// 将当前版本处理并且拆包
+		if(err = process8()) {
+			trace("->8")
+			break
+		}
+	} while(false)
+	return err
+}
+
+// 获取文件的名字
+function getFileName(path) {
+	var result = false
+	do {
+		var idx1 = path.lastIndexOf('/')
+		if(idx1 == -1) {
+			idx1 = 0
+		} else {
+			idx1++
+		}
+		var idx2 = path.lastIndexOf('.')
+		if(idx2 == -1) {
+			idx2 = path.length
+		}
+		result = path[idx1:idx2]
+	} while(false)
+	return result
+}
+
+// 拆分子包
+function process8() {
+	var err = false
+	do {
+		trace("拆分子包中...")
+		var path2 = "./temp/apk/assets/res"
+		var list = []
+		FileUtils.dirlist(path2, list)
+		if(list.length == 0) {
+			dump(path2, "一个文件都没找到？！")
+			err = 1
+			break
+		}
+		var len = path2.length - 3
+
+		var subPkgName = "global"
+
+		FileUtils.rmdir("./temp/subPackage")
+		FileUtils.mkdir("./temp/subPackage")
+
+		var matchInfo = self.matchInfo
+
+		var cmd = "./temp/subPackage/#B/#C"
+		var cmd2
+		var subPkgs = {}
+		for(var _, path of list) {
+			cmd2 = cmd.replaceAll("#B", subPkgName)
+			cmd2 = cmd2.replaceAll("#C", path[len:])
+			
+			FileUtils.copyfile(path, cmd2)
+
+			// 校验目录是否已经存在
+			if(!subPkgs.have(subPkgName)) {
+				subPkgs[subPkgName] = true
+			}
+		}
+
+		// 清空版本子包
+		var maxVersion = "" + self.cfg.maxVersion
+		FileUtils.rmdir("./output/subPackage/" + maxVersion)
+
+		cmd = "cd ./temp/subPackage/#A && zip -r ../../../#A.zip ./*"
+
+		var cmd3 = "./output/subPackage/#D/#A_#B_#C.zip"
+		cmd3 = cmd3.replaceAll("#D", maxVersion)
+
+		var cmd4 = "./#A.zip"
+		var path3
+		var vec = []
+
+		for(var subPkgName, _ in subPkgs) {
+			cmd2 = cmd.replaceAll("#A", subPkgName)
+			if(err = Sys(cmd2)) break
+
+            // 同样需要计算MD5和size
+            path3 = cmd4.replaceAll("#A", subPkgName)
+            cmd2 = cmd3.replaceAll("#C", MD5.MD5Cal(path3))
+
+            var size3 = getFileSize(path3)
+            if(size3 == 0) {
+            	dump(paht3, "获取文件的大小失败")
+            	err = 1
+            	break
+            }
+            cmd2 = cmd2.replaceAll("#B", "" + size3)
+            cmd2 = cmd2.replaceAll("#A", subPkgName)
+
+			FileUtils.movefile(path3, cmd2)
+
+			vec.add(cmd2[cmd2.lastIndexOf('/') + 1 :])
+		}
+		if(err)break
+
+		var path = "./output/subPackage/#A/packageInfo.json"
+		path = path.replaceAll("#A", maxVersion)
+		if(err = base.saveJson(path, vec)) {
+			dump(path, "写入文件失败")
+			break
+		}
+	} while(false)
+	return err
+}
+
+/* 获取文件大小 */
+function getFileSize(fileName) {
+    var cmd = "ls -l #A | awk '{print $5}' >> out.txt"
+    cmd = cmd.replaceAll("#A", fileName)
+    if(system(cmd)) return 0
+    var content = FileUtils.readfile("out.txt")
+    content = content[:content.length - 1]
+    FileUtils.remove("out.txt")
+    return Integer.parseInt(content)
+}
+
+// 开始比较两个版本，
+function process7(ver1, ver2) {
+	var err = 0
+	do {
+		// 右侧较新
+		dump(ver2 + "->" + ver1, "正在比较版本")
+
+		var folder = "./temp/apks/#A"
+		var f1 = folder.replaceAll("#A", "" + ver1)
+		var f2 = folder.replaceAll("#A", "" + ver2)
+
+		var hash = FileUtils.diff(f1, f2)
+
+		var diff = hash.diff
+		var leftNews = hash.left_only
+		var rightAlones = hash.right_only
+		if(diff.length == 0 && leftNews.length == 0 && rightAlones.length == 0) {
+			dump(ver2 + "->" + ver1, "错误：两个版本内容完全一致，没有任何差异！")
+			err = 1
+			break
+		}
+
+		// 将差异存起来
+		trace("正在生成子包更新...")
+
+		FileUtils.rmdir("./temp/diff")
+		var cmd = f1 + "/#A"
+
+		var cmd2
+
+		var cmd3 = "./temp/diff/#B/#A"
+
+		var path
+		var path3
+		var subPkgName = "global"
+
+		var subs = {}
+
+		var arys = [diff, leftNews]
+		for(var _, iter of arys) {
+			for(var _, path of iter) {
+				// 拆分资源至具体的文件夹
+				// path3 = getFileName(path)
+				// 此时获取了文件的路径
+				// 无法归类的都放到global中
+				cmd2 = cmd3.replaceAll("#A", path)
+				cmd2 = cmd2.replaceAll("#B", subPkgName)
+
+				FileUtils.copyfile(cmd.replaceAll("#A", path), cmd2)
+
+				if(!subs.have(subPkgName)) {
+					subs[subPkgName] = true
+				}
+			}
+		}
+
+		if(rightAlones.length > 0) {// 右侧存在需要被删除的文件，就需要将需要删除的文件写入global中
+			if(!subs.have("global")) {// 如果不存在这个global就创建一个目录
+				subs.global = true
+				FileUtils.mkdir("./temp/diff/global")
+			}
+			var pp = "./temp/diff/global/delPaths.json";
+			if(err = base.saveJson(pp, rightAlones)) {
+				dump(pp, "写入文件失败！")
+				break
+			}
+		}
+
+		// 将子包压缩起来，方便更新。。
+		// 清空版本子包
+		var maxVersion = "" + self.cfg.maxVersion
+		cmd = "cd ./temp/diff/#A && zip -r ../../../#A.zip ./*"
+
+		var cmd3 = "./output/update/#E/#D/#A_#B_#C.zip"
+		cmd3 = cmd3.replaceAll("#D", "" + ver2);
+		cmd3 = cmd3.replaceAll("#E", maxVersion);
+
+		var cmd4 = "./#A.zip"
+		var vec = []
+
+		for(var subPkgName, _ in subs) {
+			if(err = Sys(cmd.replaceAll("#A", subPkgName))) break
+
+            // 同样需要计算MD5和size
+            path3 = cmd4.replaceAll("#A", subPkgName)
+
+            cmd2 = cmd3.replaceAll("#C", MD5.MD5Cal(path3))
+
+            var size3 = getFileSize(path3)
+            if(size3 == 0) {
+            	dump(path3, "获取文件的大小失败")
+            	err = 1
+            	break
+            }
+            cmd2 = cmd2.replaceAll("#B", "" + size3)
+            cmd2 = cmd2.replaceAll("#A", subPkgName)
+
+			FileUtils.copyfile(cmd4.replaceAll("#A", subPkgName), cmd2)
+			vec.add(cmd2[cmd2.lastIndexOf('/') + 1:])
+		}
+		if(err)break
+
+		path = "./output/update/#B/#A/updateInfo.json"
+		path = path.replaceAll("#A", "" + ver2)
+		path = path.replaceAll("#B", maxVersion)
+
+		if(err = base.saveJson(path, vec)) {
+			dump(path, "写入文件失败")
+			break
+		}
+
+	} while(false)
+	return err
+}
+
+// 回滚流程
+function process4() {
+	var err = 0
+	do {
+		var path = "./temp/apks/cfg.json"
+		var hash = base.readJson(path)
+		if(!hash) {
+			dump(path, "打开文件失败")
+			err = 1
+			break
+		}
+
+		var versions = hash.versions
+		if(!(versions && versions.length > 0)) {
+			dump("无法回滚，没有处理过任何更新")
+			err = 1
+			break
+		}
+
+		var size = versions.length
+		var succ = 0
+		if(size > 1) {
+			dump(versions[size - 1] + "->" + versions[size - 2], "是否将版本退回至上一个版本？(y/n)")
+			if(input() == "y") {
+				versions.remove(size - 1)
+				hash.maxVersion = versions[size - 2]
+				if(err = base.saveJson(path, hash)) {
+					dump(path, "写入文件失败！")
+					break
+				}
+				succ = 1
+			}
+		} else {
+			dump(versions[0], "是否确定删除最后一个版本？(y/n)")
+			if(input() == "y") {
+				FileUtils.remove("./temp/apks/cfg.json")
+				succ = 1
+			}
+		}
+
+		if(succ) {
+			trace("回滚成功！")
+		} else {
+			trace("取消回滚")
+		}
+
+	} while(false)
+	return err
+}
+
+// 第一次执行批处理触发
+function process3() {
+	FileUtils.mkdir("./temp/apks")
+	return 0
+}
+
+// 拆分包，并将其存起来
+function process2() {
+	var err = 0
+	do {
+		// 开始处理文件
+		var apk_path = self.apk_path
+
+		var idx = apk_path.lastIndexOf('/')
+		if(idx == -1) {
+			dump(1, "process2")
+			err = 1
+			break
+		}
+		apk_path = apk_path[idx + 1 : apk_path.length]
+		var vec = apk_path.split("_")
+
+		// 获取版本
+		var version = vec[2]
+		if(!Utils.isNumber(version)) {
+			dump(version, "错误：包名中第二个参数，版本号非数字")
+			err = 1
+			break
+		}
+		version = Integer.parseInt(version)
+
+		var cfg = self.cfg
+		// 如果不存在最大版本号，就压入最大版本
+		var maxVersion = 0
+		var versions
+		if(cfg.have("maxVersion")) {
+			maxVersion = cfg.maxVersion
+			versions = cfg.versions
+			if(!versions) {
+				dump(cfg, "错误：cfg中找不到versions字段")
+				err = 1
+				break
+			}
+		} else {
+			cfg.versions = []// 赋予一个新的
+		}
+		cfg.maxVersion = version
+
+		if(version <= maxVersion) {
+			dump(version + " > " + maxVersion, "错误：版本号必须大于上个版本")
+			break
+		}
+
+	} while(false)
+	return err
+}
+
+// 初始化
+function process1(argc) {
+	var err = 0
+	do {
+		trace("程序正在初始化...")
+		if(argc.length < 2) {
+			trace("参数个数错误！")
+			err = 1
+			break
+		}
+
+		// 处理文件名
+		///////////////////////////////////////////////
+		var name = argc[1]
+		var idx = name.lastIndexOf('.')
+		if(idx == -1) {
+			dump(idx, "路径存在问题")
+			err = 1
+			break
+		}
+		name = name[:idx]
+		var vec = name.split("_")
+
+		var showLog = false
+		var haveSubPkg = false// 是否支持子包
+		var rollback = false// 回滚
+		for(var _, arg of vec) {
+			if(arg == "L") {
+				showLog = true
+			} else if(arg == "S") {
+				haveSubPkg = true// 表示支持子包
+			} else if(arg == "R") {
+				rollback = true// 表示回滚
+				break
+			}
+		}
+		self.rollback = rollback
+		if(rollback) {
+			break
+		}
+		self.showLog = showLog
+		self.haveSubPkg = haveSubPkg
+		///////////////////////////////////////////////
+
+		var files = []
+		FileUtils.dirlist(argc[0], files, ".*.apk$", FileUtils.DL_FILE)
+		if(files.length == 0) {
+			trace("错误：一个apk都没找到")
+			err = 1
+			break
+		}
+		if(files.length != 1) {
+			trace("错误：请确保当前目录下有且只有一个apk")
+			err = 1
+			break
+		}
+		self.apk_path = files[0]
+
+		// 获取项目配置
+		var hash = base.readJson("./temp/apks/cfg.json")
+		if(!hash) {
+			// 表示为初始化
+			if(err = process3()) {
+				trace("->3")
+				break
+			}
+			hash = {}
+		}
+		self.cfg = hash
+
+	} while(false)
+	return err
+}
+
+function Sys(cmd) {
+	if(!self.showLog) {
+		cmd += " >/dev/null 2>/dev/null"
+	}
+	return system(cmd)
+}
+
+main(os.args())

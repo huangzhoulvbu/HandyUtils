@@ -1,0 +1,11 @@
+{
+	// 只会遍历当前目录，不包含子目录
+	"dir":"E:/document/Cocos2dWorkspace/pdk/assets/res/res/Common/chat/dtbq",
+	/*
+		0:就普通的字符串比较的形式排序
+		1:文件名第一个匹配到的数字排序
+		2:文件名最后一个匹配到的数字排序
+	*/
+	"sort":0,
+	"type":".*.png$"// 支持正则表达式。。注意后面的$不可缺少，否则meta也会符合条件
+}

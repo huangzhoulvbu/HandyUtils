@@ -1,0 +1,3147 @@
+/*
+ * 天天种菜项目打包
+ *
+ * 标签项目一览
+ * JGG:是否启用九宫格功能
+ *
+*/
+var base = require("base")
+// dump(base, "base")
+// base.pause()
+
+
+var self = {}
+var ret_temp// 临时存放返回值
+
+// 解决android-29 无法编译成包的问题
+function apk_tool() {
+	var err = 0
+	do {
+		var pwd = FileUtils.getcwd()
+		var key = "/Users/"
+		if(pwd.indexOf(key) != 0) {
+			dump(key, "错误:当前根目录不是这个")
+			err = 1
+			break
+		}
+		var len = key.length
+		var userName = pwd[len:pwd.indexOf('/', len)]//用户名
+
+		var path2 = "/Users/$userName/Library/apktool/framework/"
+		path2 = path2.replaceAll("$userName", userName)
+		var path1 = "$HANDY_HOME/utils/framework-res.apk"
+
+		path1 = path1.replaceAll("$HANDY_HOME", os.getenv("HANDY_HOME"))
+		if(!FileUtils.exist(path2 + "flag")) {
+			// 将文件复制过去
+			FileUtils.copyfile(path1, path2 + "1.apk")
+			FileUtils.writefile(path2 + "flag", "1")
+		}
+	} while(false)
+	return err
+}
+
+function main(argc) {
+	var err = 0
+	do {
+		trace("程序已启动")
+		if(err = apk_tool()) break
+
+		// 增加一下程序权限
+		Sys("chmod +x $HANDY_HOME/utils/ios/*")
+		Sys("chmod +x $HANDY_HOME/chmod +x $HANDY_HOME/utils/ios/ImageMagick-7.0.8/bin/*")
+		// 增加可执行权限，否则会出乱子
+		Sys("chmod +x ../build/jsb-default/frameworks/runtime-src/proj.android-studio/gradlew")
+		Sys("xattr -r -d com.apple.quarantine $HANDY_HOME/utils/ios/ImageMagick-7.0.8/bin/magick")
+		// 处理文件路径，获取组名，项目名等信息
+		if(err = process5(argc)) {
+			break
+		}
+
+		// 初始化
+		if(err = process3()) {
+			break
+		}
+		
+		// 复制工程过来
+		if(err = process14()) {
+			break
+		}
+
+		// 切一下代码
+		if(err = process13()) {
+			break
+		}
+
+		// 清掉所有注释
+		if(!self.debug) {// 不是调试版，清理cc.log和
+			Sys("python $HANDY_HOME/utils/adddebug_js.py ../assets/scripts")
+		}
+
+		/*if JGG then*/
+		if(!self.have("assetsSvnVersion1")) {
+			// 处理九宫格
+			if(err = process17(1)) {// 九宫格资源版本管理
+				trace("process17 失败")
+				break
+			}
+		}
+		/*end*/
+		
+		if(self.projType == "web") {
+			// 此时，如果项目类型为web，此时
+			if(err = process_web4()) {
+				break
+			}
+		} else {
+			// 开始根据渠道包打包
+			if(err = process4()) {
+				break
+			}
+		}
+		trace("一切顺利，感谢你一路上淡定的陪伴，欢迎再次使用本批处理 ^_^~")
+	} while(false)
+	
+	if(err) {
+		dump(err, "很抱歉没有完成任务。。。。。")
+		Sound.play("../batch/Lose.mp3", 4)
+	} else {
+		Sound.play("../batch/Win.mp3", 4)
+	}
+}
+
+function web_process1(groupValue) {
+	var err = 0
+	do {
+		var platform = groupValue.platform
+		if(self.isUpdate) {
+			var cmd = "cd ../build && zip -r ../batch/web-$PLATFORM.zip ./web-$PLATFORM/*"
+			cmd = cmd.replaceAll("$PLATFORM", platform)
+			Sys(cmd)
+
+			var server = groupValue.server
+			if(!server) {
+				dump("配置缺少server", "错误")
+				err = 1
+				break
+			}
+
+			cmd = "scp ../batch/web-$PLATFORM.zip root@$1:$2"
+			cmd = cmd.replaceAll("$PLATFORM", platform)
+
+			var ip = server.ip
+			if(!ip) {
+				dump("缺少ip", "错误")
+				err = 2
+				break
+			}
+			var dir = server.dir
+			if(!dir) {
+				dump("缺少dir", "错误")
+				err = 3
+				break
+			}
+			cmd = cmd.replaceAll("$1", ip)
+			cmd = cmd.replaceAll("$2", dir)
+
+			system(cmd)
+
+			cmd = "ssh root@$1 \"cd $2; sh run-$PLATFORM.sh\""
+			cmd = cmd.replaceAll("$PLATFORM", platform)
+			cmd = cmd.replaceAll("$1", ip)
+			cmd = cmd.replaceAll("$2", dir)
+
+			system(cmd)
+
+			cmd = "../batch/web-$PLATFORM.zip"
+			cmd = cmd.replaceAll("$PLATFORM", platform)
+			FileUtils.remove(cmd)
+		}
+	} while(false)
+	return err
+}
+
+function process_web(groupValue) {
+	var err = 0
+	do {
+		var path = "../build/web-$PLATFORM/res"
+		path = path.replaceAll("$PLATFORM", groupValue.platform)
+
+		var cfgName = self.cfgName
+
+		var cmd1 = "$HANDY_HOME/utils/ios/pngquant --ext .pngo $P"
+		var cmd2
+
+		var cmd3 = "../batch/temp/$CFG_NAME/tempWebRes/$P2"
+		cmd3 = cmd3.replaceAll("$CFG_NAME", cfgName)
+
+		var cmd5 = "../batch/temp/$CFG_NAME/tempWebRes/$P1"
+		cmd5 = cmd5.replaceAll("$CFG_NAME", cfgName)
+
+		var md5v
+
+		var dir = "../batch/temp/$CFG_NAME/tempWebRes"
+		dir = dir.replaceAll("$CFG_NAME", cfgName)
+		if(!FileUtils.exist(dir)) {
+			FileUtils.mkdir(dir)
+		}
+
+		var path1 = "../batch/temp/$CFG_NAME/tempWebRes/$P"
+		path1 = path1.replaceAll("$CFG_NAME", cfgName)
+
+		var path2
+
+		var idx
+		var exName
+
+		var list = []
+		FileUtils.dirlist(path, list)
+		for(var _, path of list) {
+			// 表示获取了文件的路径
+			// 开始优化
+			md5v = MD5.MD5Cal(path)
+
+			idx = path.lastIndexOf('.')
+			if(idx == -1) continue
+
+			idx++
+			exName = path.substr(idx, path.length)
+			if(exName != "png") continue
+
+			// 首先检测文件是否存在，如果存在，就不用优化了。。
+			path2 = path1.replaceAll("$P", md5v)
+			if(!FileUtils.exist(path2)) {
+				// 如果文件不存在，则开始优化处理，然后无脑复制过去即可
+				Sys(cmd1.replaceAll("$P", path))
+				FileUtils.movefile(path + "o", cmd3.replaceAll("$P2", md5v))
+			}
+
+			// 开始复制过去，强行覆盖！
+			FileUtils.copytree(cmd5.replaceAll("$P1", md5v), path)
+		}
+	} while(false)
+	return err
+}
+
+function process5(argc) {
+	var err = 0
+	do {
+		if(argc.length < 2) {
+			trace("错误：传入参数个数不正确!")
+			err = 1
+			break
+		}
+
+		var arg = argc[1]
+
+		var idx = arg.lastIndexOf('.')
+		if(idx == -1) {
+			err = 2
+			break
+		}
+
+		var vec = arg.substr(0, idx).split("_")
+
+		var cfgName
+		var groupName
+		var showLog = false
+		var isUpdate = false
+		var debug = false
+		var pause1 = false
+
+		var projType = "android"// 0、android，1、ios，2、web版本
+
+		var flags = new Vector()// 标签定义
+		for(var _, arg of vec) {
+			do {
+				if(arg.indexOf('@') != -1) {
+					var vec2 = arg.split("@")
+					var arg1 = vec2[0]
+					if(arg1 == "N") {
+						cfgName = vec2[1]
+						flags.add(cfgName)
+						break
+					}  else if(arg1 == "S") {
+						groupName = vec2[1]
+						break
+					} else if(arg1 == "F") {
+						var size = vec2.length
+						// 此时获取了文件的标签
+						for(var i = 1; i < size; i++) {
+							flags.add(vec2[i])
+						}
+						break
+					}
+				} else {
+					switch(arg) {
+					case "IOS":
+						projType = "ios"
+						break
+					case "WEB":
+						projType = "web"
+						break
+					case "L":
+						showLog = true
+						break
+					case "Z":
+						flags.add("FORMAL")
+						break
+					case "U":
+						isUpdate = true
+						break
+					case "D":
+						debug = true
+						break
+					case "B":
+						pause1 = true
+						break
+					}
+				}
+				dump(arg, "警告，无效的参数")
+			} while(false)
+		}
+
+		if(!cfgName) {
+			trace("错误：没有指定项目配置文件呀？！")
+			err = 3
+			break
+		}
+		if(!groupName) {
+			trace("错误：未配置组名啊！！")
+			err = 4
+			break
+		}
+		
+		// 添加标签。
+		if(projType == "web") {
+			flags.add("web")
+		} else {
+			flags.add("app")
+		}
+
+		self.cfgName = cfgName
+		self.groupName = groupName
+		self.showLog = showLog
+		self.isUpdate = isUpdate
+		self.debug = debug
+		self.flags = flags
+		self.pause = pause1
+		self.projType = projType
+
+	} while(false)
+	return err
+}
+
+/**
+	第一次打全包检测，ios的话需要检测签名是否和上次一致，不一致直接gg
+*/
+function process12(groupValue) {
+	var err = 0
+	do {
+		var isIOS = self.projType == "ios"
+		FileUtils.rmdir("../build/jsb-default/publish")
+		FileUtils.rmdir("../build/jsb-default/simulator")
+
+		if(isIOS) {
+			// 处理ios
+			if(err = process7(groupValue)) {
+				trace("->3")
+				break
+			}
+		} else {
+			if(err = process1(groupValue)) {
+				trace("->1")
+				break
+			}
+		}
+
+		var cfgName = self.cfgName
+		if(self.have("assetsSvnVersion")) {
+			if(err = process2()) {
+				trace("->2")
+				break
+			}
+		} else {
+			trace("跳过资源优化, 直接复用现有资源...")
+			// 如果这个资源已经存在了，直接使用，就不用再优化什么的了
+			var ver = self.assetsSvnVersion1
+			var cmd = "../batch/temp/$cfgName/subPackage"
+			cmd = cmd.replaceAll("$cfgName", cfgName)
+			FileUtils.rmdir(cmd)
+
+			cmd = "../batch/temp/__res/$ver/"
+			cmd = cmd.replaceAll("$ver", ver)
+
+			var cmd1 = "../batch/temp/$cfgName/subPackage"
+			cmd1 = cmd1.replaceAll("$cfgName", cfgName)
+
+			FileUtils.copytree(cmd, cmd1)
+		}
+
+		// 找寻
+		if(err = setInfoPath()) {
+			break
+		}
+
+		// 先把工程复制过来，然后将部分文件删除。。
+		if(isIOS) {
+			var cmd = "../batch/temp/$CFG_NAME/proj.ios"
+			cmd = cmd.replaceAll("$CFG_NAME", cfgName)
+			FileUtils.rmdir(cmd)
+
+			cmd = "../batch/temp/$CFG_NAME/proj.ios_src"
+
+			var cmd1 = "../batch/temp/$CFG_NAME/proj.ios"
+			FileUtils.copytree(cmd.replaceAll("$CFG_NAME", cfgName), cmd1.replaceAll("$CFG_NAME", cfgName))
+		} else {
+			var cmd = "../batch/temp/$CFG_NAME/proj.android"
+			FileUtils.rmdir(cmd.replaceAll("$CFG_NAME", cfgName))
+
+			cmd = "../batch/temp/$CFG_NAME/proj.android_src"
+
+		 	var cmd1 = "../batch/temp/$CFG_NAME/proj.android"
+			FileUtils.copytree(cmd.replaceAll("$CFG_NAME", cfgName), cmd1.replaceAll("$CFG_NAME", cfgName))
+		}
+
+	} while(false)
+	return err
+}
+
+function setInfoPath() {
+	var err = 0
+	do {
+		var path
+		var type = self.projType
+		var cfgName = self.cfgName
+		if(type == "ios") {
+			path = "../batch/temp/$CFG_NAME/proj.ios/Payload/$projectName-mobile.app/info.json"
+			path = path.replaceAll("$CFG_NAME", cfgName)
+			path = path.replaceAll("$projectName", self.projectName)
+		} else if(type == "android") {
+			path = "../batch/temp/$CFG_NAME/proj.android/assets/info.json"
+			path = path.replaceAll("$CFG_NAME", cfgName)
+		} else {
+			dump(type, "错误:无法识别的类型")
+			err = 1
+			break
+		}
+		self.infoPath = path// 写入文件内容
+	} while(false)
+	return err
+}
+
+function process_web4() {
+	var err = 0
+	do {
+		// 读取组信息开始处理
+		var groupInfo = self.groupInfo
+		for(var groupName, groupValue in groupInfo) {
+			dump(groupName, "正在处理")
+
+			if(err = fullGroupInfo(groupValue)) {
+				trace("-->2")
+				err = 1
+				break
+			}
+
+			// 第一次处理工程
+			if(err = process_web1(groupValue)) {
+				trace("-->3")
+				err = 2
+				break
+			}
+
+			if(err = process_web(groupValue)) {// 优化图片
+				trace("-->4")
+				err = 3
+				break
+			}
+
+			if(err = web_process1(groupValue)) {
+				trace("-->6")
+				err = 4
+				break
+			}
+		}
+	} while(false)
+	return err
+}
+
+function process4() {
+	var err = 0
+	do {
+		// 读取组信息开始处理
+		var groupInfo = self.groupInfo
+		var isIOS = self.projType == "ios"
+		var cfgName = self.cfgName
+
+		var dir = "../batch/temp/$CFG_NAME/tempRes"
+		dir = dir.replaceAll("$CFG_NAME", cfgName)
+		if(!FileUtils.exist(dir)) {
+			FileUtils.mkdir(dir)
+		}
+		for(var groupName, groupValue in groupInfo) {
+			dump(groupName, "正在处理")
+
+			if(err = fullGroupInfo(groupValue)) {
+				trace("--->1")
+				break
+			}
+
+			// 第一次处理工程
+			if(err = process12(groupValue)) {
+				trace("--->2")
+				break
+			}
+
+			// 表示这个组已经补充完毕了，开始修改文件
+			// 先将res都清空
+
+			var cmd
+			if(isIOS) {
+				cmd = "../batch/temp/$CFG_NAME/proj.ios/Payload/$projectName-mobile.app/res"
+				cmd = cmd.replaceAll("$projectName", self.projectName)
+			} else {
+				cmd = "../batch/temp/$CFG_NAME/proj.android/assets/res"
+			}
+			FileUtils.rmdir(cmd.replaceAll("$CFG_NAME", cfgName))
+
+			// 根据组信息复制相应的游戏资源
+			if(err = process6(groupValue, groupName)) {
+				trace("--->3")
+				break
+			}
+		}
+		if(err) {
+			trace("--->4")
+			break
+		}
+
+		// 资源备份
+		if(err = resBackup()) {
+			trace("--->5")
+			break
+		}
+
+		var ary
+		if(isIOS) {
+			ary = ["proj.ios", "proj.ios_src", "subPackage"]
+			
+			// 根据渠道，备份工程
+			if(err = ipaBackup()) {
+				trace("--->6")
+				break
+			}
+		} else {
+			// 把几个目录全干掉
+			ary = ["proj.android", "proj.android_src", "subPackage"]
+			// 根据渠道，备份工程
+			if(err = apkBackup()) {
+				trace("--->7")
+				break
+			}
+		}
+
+		var cmd = "../batch/temp/$CFG_NAME/"
+		cmd = cmd.replaceAll("$CFG_NAME", cfgName)
+		for(var _, v of ary) {
+			FileUtils.rmdir(cmd + v)
+		}
+
+	} while(false)
+	return err
+}
+
+// 资源备份
+function resBackup() {
+	var err = 0
+	do {
+		var version = self.assetsSvnVersion
+		if(!version) {
+			break
+		}
+
+		// 获取版本信息，直接写入
+		var cfgName = self.cfgName
+		var dir = "../batch/temp/__res"
+		FileUtils.mkdir(dir)
+
+		// 遍历，看看是否存在其他目录，有就干掉，存在已经无意义
+		var dirs = []
+		FileUtils.dirlist(dir, dirs, null, FileUtils.DL_FOLDER)
+		for(var _, dir2 of dirs) {
+			FileUtils.rmdir(dir2)
+		}
+
+		var cmd = "../batch/temp/$cfgName/subPackage"
+		FileUtils.movetree(cmd.replaceAll("$cfgName", cfgName), "../batch/temp/__res/" + version)
+	} while(false)
+	return err
+}
+
+// ipa 备份，便于下次打包能提提速
+function ipaBackup() {
+	var err = 0
+	do {
+		if(!self.have("ipaPackageInfo")) {// 如果不存在，就没必要备份了
+			break
+		}
+
+		// 查找符合包名条件的包，并且符合 project_path 的
+		var ipaPackageInfo = self.ipaPackageInfo// 打包信息
+
+		FileUtils.mkdir("../batch/temp/__ipas")
+
+		var path = "../batch/temp/__ipas/$dir"
+		var ipaProjectDir1 = ipaPackageInfo[0]// 打包工程
+		var icon1 = ipaPackageInfo[1]// 图标
+		var packageName = ipaPackageInfo[2]// 图标
+
+		var flag = self.debug ? "debug" : "release"
+
+		var path1 = self.ipaSvnVersion + "-" + ipaProjectDir1 + "-" + icon1 + "-" + flag + "-" + packageName// 获取路径
+		path1 = path1.replaceAll(".", "-")// 替换好名字
+		path = path.replaceAll("$dir", path1)// 复制文件
+		if(FileUtils.exist(path)) {// 如果目录存在，表示可以不用处理了
+			break
+		}
+
+		var cfgName = self.cfgName
+		path1 = "../batch/temp/$CFG_NAME/proj.ios_src"
+		path1 = path1.replaceAll("$CFG_NAME", cfgName)
+
+		// 先将res和src目录删除再移动过去
+		var ary = ["src", "res"]
+		var cmd = "$dir/Payload/$projectName-mobile.app/$name"
+		cmd = cmd.replaceAll("$dir", path1)
+		cmd = cmd.replaceAll("$projectName", self.projectName)
+		for(var _, v of ary) {
+			FileUtils.rmdir(cmd.replaceAll("$name", v))
+		}
+
+		// 将目录移动过去即可
+		FileUtils.movetree(path1, path)
+
+	} while(false)
+	return err
+}
+
+// apk备份，便于下次打包能提提速
+function apkBackup() {
+	var err = 0
+	do {
+		if(!self.have("apkPackageInfo")) {// 如果不存在，就没必要备份了
+			break
+		}
+		// 查找符合包名条件的包，并且符合 project_path 的
+		var apkPackageInfo = self.apkPackageInfo// 打包信息
+		var dir = "../batch/temp/__apks"
+		FileUtils.mkdir(dir)
+		var path = "../batch/temp/__apks/$dir"
+		var apkProjectDir1 = apkPackageInfo[0]// 打包工程
+		var packageName1 = apkPackageInfo[1]// 包名
+
+		var path2 = "-" + apkProjectDir1 + "-" + packageName1
+		path2 = path2.replaceAll(".", "-")// 替换好名字
+
+		var path1 = self.apkSvnVersion + path2// 获取路径
+		// path1 = path1.replaceAll(".", "-")// 替换好名字
+		path = path.replaceAll("$dir", path1)// 复制文件
+		if(FileUtils.exist(path)) {// 如果目录存在，表示可以不用处理了
+			break
+		}
+
+		// 只存储最大版本号的，将其他旧版本干掉，避免占据过多硬盘资源
+		var dirs = []
+		var reg = ".*" + path2 + "$";
+
+		FileUtils.dirlist(dir, dirs, reg, FileUtils.DL_FOLDER)// 只找寻符合条件的目录
+
+		for(var _, dir2 of dirs) {// 遍历，干掉旧的目录
+			FileUtils.rmdir(dir2)
+		}
+
+		var cfgName = self.cfgName
+		path1 = "../batch/temp/$CFG_NAME/proj.android_src"
+		path1 = path1.replaceAll("$CFG_NAME", cfgName)
+		// 先将res和src目录删除再移动过去
+		var ary = ["src", "res"]
+		var cmd = path1 + "/assets/"
+		for(var _, v of ary) {
+			FileUtils.rmdir(cmd + v)
+		}
+		// 将目录移动过去即可
+		FileUtils.movetree(path1, path)
+	} while(false)
+	return err
+}
+
+
+// 操作图片
+function magick(cmd2) {
+	var err = 0
+	do {
+		var cmd = "#!/bin/bash\nexport MAGICK_HOME=$HANDY_HOME/utils/ios/ImageMagick-7.0.8\nexport PATH=$MAGICK_HOME/bin:$PATH\nexport DYLD_LIBRARY_PATH=$MAGICK_HOME/lib/\n" + cmd2;
+		FileUtils.writefile("temp.sh", cmd)
+		if(!Sys("sh temp.sh")) {
+			err = 2
+			break
+		}
+		FileUtils.remove("temp.sh")
+	} while(false)
+	return err
+}
+
+function process6(groupValue, groupName) {
+	var err = 0
+	do {
+		// 这个地方先复制global资源
+		var type = self.projType
+
+		var cfgName = self.cfgName
+		var plist
+		if(type == "ios") {
+			var cmd = "../batch/temp/$CFG_NAME/subPackage/global/"
+			cmd = cmd.replaceAll("$CFG_NAME", cfgName)
+
+			var cmd1 = "../batch/temp/$CFG_NAME/proj.ios/Payload/$projectName-mobile.app/res"
+			cmd1 = cmd1.replaceAll("$projectName", self.projectName)
+			cmd1 = cmd1.replaceAll("$CFG_NAME", cfgName)
+
+			FileUtils.copytree(cmd, cmd1)
+
+			cmd = "../batch/temp/$CFG_NAME/proj.ios/Payload/$projectName-mobile.app/Info.plist"
+			cmd = cmd.replaceAll("$CFG_NAME", cfgName)
+			cmd = cmd.replaceAll("$projectName", self.projectName)
+			plist = base.readJson(cmd)
+		} else {
+			var cmd = "../batch/temp/$CFG_NAME/subPackage/global/"
+			cmd = cmd.replaceAll("$CFG_NAME", cfgName)
+
+			var cmd1 = "../batch/temp/$CFG_NAME/proj.android/assets/res"
+			cmd1 = cmd1.replaceAll("$CFG_NAME", cfgName)
+
+			FileUtils.copytree(cmd, cmd1)
+
+			cmd = "../batch/temp/$CFG_NAME/proj.android/build"
+			cmd = cmd.replaceAll("$CFG_NAME", cfgName)
+			FileUtils.rmdir(cmd)
+		}
+
+		var pathxx = self.infoPath
+		var info = base.readJson(pathxx)
+		if(!info) {
+			dump(pathxx, "打开文件失败")
+			err = 1
+			break
+		}
+
+		var key
+
+		var channel_ids// 打多个渠道包
+		for(var key, value in groupValue) {
+			switch(key) {
+			case "name":// 表示修改info.json文件。。。
+				if(type == "ios") {
+					plist.CFBundleDisplayName = value
+				} else {
+					var path = "../batch/temp/$CFG_NAME/proj.android/res/values/strings.xml"
+					path = path.replaceAll("$CFG_NAME", cfgName)
+					var content = FileUtils.readfile(path)
+					if(!content) {
+						dump(path, "打开文件失败")
+						err = 1
+						break
+					}
+					content = content.replaceReg("(<string name=\"app_name\">).*?(</string>)", "$1" + value + "$2")
+				
+					FileUtils.writefile(path, content)
+				}
+				break
+			case "CHANNEL_IDS":// 打多个渠道包
+				channel_ids = value
+				break
+			case "open_app": // 替换
+				if(self.projType == "ios") {
+					if(!plist.CFBundleURLTypes) {
+						dump("CFBundleURLTypes", "错误：plist中未找到！！")
+						err = 1
+						break
+					}
+					var urls = plist.CFBundleURLTypes
+					if(urls.length != 1) {
+						dump("open_app修改失败！！", "错误")
+						err = 1
+						break
+					}
+
+					var url = urls[0]
+					url.CFBundleURLName = value.name
+					url.put("CFBundleURLSchemes", [value.url])
+				} else {
+					// 表示修改info.json文件。。。
+					var paths = [
+						"../batch/temp/$CFG_NAME/proj.android/AndroidManifest.xml", 
+						"../batch/temp/$CFG_NAME/proj.android/original/AndroidManifest.xml"
+					]
+					for(var _, path of paths) {
+						path = path.replaceAll("$CFG_NAME", cfgName)
+						var content = FileUtils.readfile(path)
+						if(!content) {
+							dump(path, "打开文件失败")
+							err = 1
+							break
+						}
+						var t = "$1" + value + "$2"
+						content = content.replaceReg("(<data\\s*?android:scheme=\").*?(\"/>)", t)
+						content = content.replaceReg("(<data\\s*?android:scheme=\").*?(\"\\s*?>\\s*?</data>)", t)
+				
+						FileUtils.writefile(path, content)
+					}
+					if(err) break
+				}
+				break
+			case "icon":
+				if(type != "ios") {
+					var src_path = "../batch/icons/" + value + ".png"
+					if(!FileUtils.exist(src_path)) {
+						dump(src_path, "找不到指定的icon！")
+						err = 1
+						break
+					}
+
+					var md5_src_path = MD5.MD5Cal(src_path)
+
+					// 将图片处理，过后，再复制进去
+					var cmd3 = "magick convert -resize $Wx$H! $SRC ../batch/temp/tmp.png"
+					cmd3 = cmd3.replaceAll("$SRC", src_path)
+					var cmd4
+					
+					// 搜寻 ic_launcher.png，都替换一波
+					var dir8 = "../batch/temp/$CFG_NAME/proj.android/res"
+					dir8 = dir8.replaceAll("$CFG_NAME", cfgName)
+					var list = []//ergodic(self, dir8, "png");
+					FileUtils.dirlist(dir8, list, ".*.png$")
+					var path_33 = "../batch/temp/$CFG_NAME/tempRes/$P_$W_$H"
+					path_33 = path_33.replaceAll("$CFG_NAME", cfgName)
+
+					var idx
+					for(var _, path of list) {
+						idx = path.lastIndexOf('/')
+						if(idx == -1) {
+							err = 1
+							break
+						}
+						idx++
+
+						if(path.indexOf("/ic_launcher.png") != -1) {// 改成新版本的图标了
+							// 获取这个图片文件的宽高
+							var size = base.getImgSize(path)
+							if(!size) {
+								dump(path, "获取图片尺寸失败")
+								err = 1
+								break
+							}
+
+							var w = "" + size.width
+							var h = "" + size.height
+
+							var md5_path = path_33.replaceAll("$P", md5_src_path)
+							md5_path = md5_path.replaceAll("$W", w)
+							md5_path = md5_path.replaceAll("$H", h)
+
+							if(!FileUtils.exist(md5_path)) {
+								cmd4 = cmd3.replaceAll("$W", w)
+								cmd4 = cmd4.replaceAll("$H", h)
+
+								FileUtils.remove("../batch/temp/tmp.png")
+								// 检测此图标文件是否存在
+								if(err = magick(cmd4)) {
+									dump(cmd3, "处理图片失败")
+									break
+								}
+
+								// 然后将图片优化至相应目录
+								FileUtils.remove("../batch/temp/tmp.pngo")
+								if(!Sys("$HANDY_HOME/utils/ios/pngquant --ext .pngo ../batch/temp/tmp.png")) {
+									err = 1
+									trace("优化文件失败")
+									break
+								}
+								// 将处理过的图片，移动到临时文件中缓存起来，避免下次再优化，导致时间太慢
+								// Sys(self, "mv ../batch/temp/tmp.pngo " + md5_path);
+								FileUtils.movefile("../batch/temp/tmp.pngo", md5_path)
+							}
+							// 将缓存中的文件复制到项目中即可
+							FileUtils.copyfile(md5_path, path)
+						}
+					}
+					// 将临时的图片删除先
+					FileUtils.remove("../batch/temp/tmp.png")
+					FileUtils.remove("../batch/temp/tmp.pngo")
+					if(err) {
+						break
+					}
+				}
+				break
+			case "sub_package": {// 将分包资源复制过来。。
+				// 此时复制游戏资源
+				// 强制将子包资源复制到打包工程
+				var cmd
+				var cmd1
+				if(type == "ios") {
+					cmd = "../batch/temp/$CFG_NAME/proj.ios/Payload/$projectName-mobile.app/res"
+					cmd = cmd.replaceAll("$CFG_NAME", cfgName)
+					cmd = cmd.replaceAll("$projectName", self.projectName)
+					FileUtils.mkdir(cmd)
+
+					cmd1 = "../batch/temp/$CFG_NAME/proj.ios/Payload/$projectName-mobile.app/res"
+					cmd1 = cmd1.replaceAll("$CFG_NAME", cfgName)
+					cmd1 = cmd1.replaceAll("$projectName", self.projectName)
+				} else {
+					cmd1 = "../batch/temp/$CFG_NAME/proj.android/assets/res"
+					cmd1 = cmd1.replaceAll("$CFG_NAME", cfgName)
+				}
+				cmd = "../batch/temp/$CFG_NAME/subPackage/#A/"
+				cmd = cmd.replaceAll("$CFG_NAME", cfgName)
+
+				var first = true
+				var gameGenre = ""
+				var path
+
+				for(var _, path of value) {
+					FileUtils.copytree(cmd.replaceAll("#A", path), cmd1)
+
+					if(first) {
+						first = false
+					} else {
+						gameGenre += ","
+					}
+					gameGenre += path
+				}
+				info.GAME_GENRE = gameGenre
+			} 
+				break
+			case "package_name":// 修改包名
+				info.put("packageName", value)
+				if(type == "ios") {
+					plist.put("CFBundleIdentifier", value)
+				}
+				break
+			case "CHANNEL_NAME":
+			case "CHANNEL_ID":
+				// 无脑压入
+				info[key] = value
+				break
+			default:
+				// 检测info中是否存在这个配置
+				// var value = node.value();
+
+				if(info.have(key)) {
+					info[key] = value
+				} else {
+					do {
+						if(type == "ios") {
+							if(key == "CODE_SIGN_IDENTITY" 
+								|| key == "PROVISIONING_PROFILE" 
+								|| key == "DEVELOPMENT_TEAM"
+								|| key == "SUBMIT_USERNAME"
+								|| key == "SUBMIT_PASSWORD"
+								|| key == "IpaProjectDir"
+								) {
+								break
+							}
+						} else {
+							if(key == "ApkProjectDir") {
+								break
+							}
+						}
+						dump(key, "警告:无用的配置信息")
+					} while(false)
+				}
+			}
+			if(err)break
+		}
+		if(err) {
+			break
+		}
+
+		var channel = self.config.projectInfo[cfgName]
+		self.channel_name = info.CHANNEL_NAME
+
+		if(!channel) {
+			trace("错误：找不到对应渠道的版本信息！！")
+			err = 1
+			break
+		}
+
+		var versionInfo
+		if(type == "ios") {
+			var ios = channel.ios
+			if(!ios) {
+				trace("错误：找不到ios版本信息！！")
+				err = 1
+				break
+			}
+			versionInfo = ios
+		} else {
+			var android = channel.android
+			if(!android) {
+				trace("错误：找不到android版本信息！！")
+				err = 1
+				break
+			}
+			versionInfo = android
+
+			if(info.CHANNEL_ID == "80010001") {
+				versionInfo.versionCode = "2147483647"// 官方渠道，强制最大版本，避免被手机上的商场更新到别的游戏
+			}
+			// dump(versionInfo, "versionInfo")
+			// dump(info, "info")
+			// base.pause()
+		}
+
+		info.packageVersionName = versionInfo.versionName
+		info.packageVersionCode = versionInfo.versionCode
+		info.versionName = channel.versionName
+		info.versionCode = channel.versionCode
+
+		if(type == "ios") {
+			// 此时开始修改plist文件
+			plist.CFBundleShortVersionString = versionInfo.versionName
+			plist.CFBundleVersion = versionInfo.versionCode
+			var path_x = "../batch/temp/$CFG_NAME/proj.ios/Payload/$projectName-mobile.app/Info.plist"
+			path_x = path_x.replaceAll("$CFG_NAME", cfgName)
+
+			path_x = path_x.replaceAll("$projectName", self.projectName)
+			if(err = base.saveJson(path_x, plist)) {
+				dump(path_x, "保存文件失败！")
+				break
+			}
+			// 将info文件转成xml格式先。。
+        	Sys("plutil -convert xml1 " + path_x)
+
+			var DEVELOPMENT_TEAM = groupValue.DEVELOPMENT_TEAM
+			var package_name = groupValue.package_name
+			var PROVISIONING_PROFILE = groupValue.PROVISIONING_PROFILE
+
+        	// 搜寻 mobileprovision
+        	var list233 = []
+        	FileUtils.dirlist("../batch/certificate", list233, ".*.mobileprovision$")
+        	if(!list233) {
+        		dump("../batch/certificate", "一个mobileprovision文件都没找到！")
+				err = 1
+        		break
+        	}
+        	var path343
+        	var path_xf = PROVISIONING_PROFILE
+
+        	var find = false
+        	for(var _, path343 of list233) {
+        		if(path343.substr(path343.lastIndexOf('/') + 1, path343.lastIndexOf('.')) == path_xf) {
+        			// 表示找到了配置文件
+        			find = path343
+        			break
+        		}
+        	}
+        	if(!find) {
+        		dump(path_xf, "未找到PROVISIONING_PROFILE文件，请将证书文件放到./build/certificate下")
+				err = 1
+        		break
+        	}
+        	self.ios_sign_path = find
+		} else {
+			var path = "../batch/temp/$CFG_NAME/proj.android/original/AndroidManifest.xml"
+			path = path.replaceAll("$CFG_NAME", cfgName)
+			var content = FileUtils.readfile(path)
+			if(!content) {
+				dump(path, "打开文件失败！！")
+				err = 1
+				break
+			}
+			content = content.replaceReg("(android:versionCode=)\".*(\")", "$1\"" + versionInfo.versionCode + "$2")
+			content = content.replaceReg("(android:versionName=)\".*(\")", "$1\"" + versionInfo.versionName + "$2")
+			
+			FileUtils.writefile(path, content)
+
+			path = "../batch/temp/$CFG_NAME/proj.android/apktool.yml"
+			path = path.replaceAll("$CFG_NAME", cfgName)
+
+			content = FileUtils.readfile(path)
+			if(!content) {
+				dump(path, "打开文件失败！！")
+				err = 1
+				break
+			}
+
+			content = content.replaceReg("(versionCode:\\s*?)'.*?'", "$1'" + versionInfo.versionCode + "'")
+			content = content.replaceReg("(versionName:) .*\n", "$1 " + versionInfo.versionName)
+
+			FileUtils.writefile(path, content)
+		}
+
+		// 获取组名
+		self.groupName = groupName
+
+		// 开始打包操作
+		if(err = process8(info, groupValue)) {
+			break
+		}
+
+		// 打多渠道包
+		if(channel_ids) {
+			if(err = process9(channel_ids, info, groupValue)) {
+				break
+			}
+		}
+	} while(false)
+	return err
+}
+
+// 生成多渠道包
+function process9(channel_ids, info, groupValue) {
+	var err = 0
+	do {
+		var start
+		var end
+		for(var _, ary of channel_ids) {
+			start = ary[0]
+			end = ary[1] + 1
+			for(var i = start; i < end; i++) {// 遍历，开始修改渠道号
+				dump(i, "正在打渠道包")
+				info.CHANNEL_ID = "" + i
+				if(err = process8(info, groupValue)) {
+					break
+				}
+			}
+			if(err) break
+		}
+		if(err) break
+	} while(false)
+	return err
+}
+
+function process8(info, groupValue) {
+	var err = 0
+	do {
+		// 开始修改版本
+		if(err = base.saveJson(self.infoPath, info)) {
+			break
+		}
+
+		var flags = self.flags
+		var FORMAL = false
+		for(var _, v of flags) {
+			if(v == "FORMAL") {
+				FORMAL = true
+				break
+			}
+		}
+		FORMAL = FORMAL ? "-formal" : "-test"
+
+		var cfgName = self.cfgName
+		if(self.projType == "ios") {
+			var cmd = "../batch/temp/$CFG_NAME/proj.ios/Payload/$projectName-mobile.app/_CodeSignature"
+			cmd = cmd.replaceAll("$projectName", self.projectName)
+			cmd = cmd.replaceAll("$CFG_NAME", cfgName)
+        	FileUtils.rmdir(cmd)
+
+			cmd = "../batch/temp/$CFG_NAME/proj.ios/Payload/$projectName-mobile.app/embedded.mobileprovision"
+			cmd = cmd.replaceAll("$PATH1", self.ios_sign_path)
+			cmd = cmd.replaceAll("$projectName", self.projectName)
+			cmd = cmd.replaceAll("$CFG_NAME", cfgName)
+
+			FileUtils.copyfile(self.ios_sign_path, cmd)
+
+			var path = "../batch/certificate/$cfgName/package_cfg/$TYPE_Entitlements.plist"
+			path = path.replaceAll("$cfgName", self.cfgName)
+
+			var is_dev = false
+	    	if(groupValue.CODE_SIGN_IDENTITY.indexOf("Development") != -1) {
+	    		is_dev = true
+	    	}
+			path = path.replaceAll("$TYPE", is_dev ? "dev" : "dis")// 表示开发者就是发布者证书
+			if(!FileUtils.exist(path)) {
+				dump(path, "打开导出配置文件失败")
+				err = 4
+				break
+			}
+
+			cmd = "codesign -f -s \"$CODE_SIGN_IDENTITY\" --entitlements $PATH3 $PROJECT"
+			cmd = cmd.replaceAll("$PATH3", path)
+			var CODE_SIGN_IDENTITY = groupValue.CODE_SIGN_IDENTITY
+
+			cmd = cmd.replaceAll("$CODE_SIGN_IDENTITY", CODE_SIGN_IDENTITY)
+			path = "../batch/temp/$CFG_NAME/proj.ios/Payload/$projectName-mobile.app"
+			path = path.replaceAll("$projectName", self.projectName)
+			path = path.replaceAll("$CFG_NAME", cfgName)
+			cmd = cmd.replaceAll("$PROJECT", path)
+			Sys(cmd)
+
+			cmd = "cd ../batch/temp/$CFG_NAME/proj.ios/ && zip -r ./1.ipa ./Payload"
+			cmd = cmd.replaceAll("$CFG_NAME", cfgName)
+			Sys(cmd)
+
+			// 删除一个多余的文件
+			FileUtils.rmdir("Symbols")
+
+			path = "../batch/temp/$CFG_NAME/proj.ios/1.ipa"
+			path = path.replaceAll("$CFG_NAME", cfgName)
+
+			var path1 = "../../#A_#B_#C_#G_#D_#E_#F.ipa"
+			path1 = path1.replaceAll("#A", cfgName + FORMAL)
+			path1 = path1.replaceAll("#B", info.versionName)
+			path1 = path1.replaceAll("#C", info.versionCode)
+			path1 = path1.replaceAll("#G", self.groupName)
+			path1 = path1.replaceAll("#D", info.CHANNEL_NAME)
+			path1 = path1.replaceAll("#E", info.CHANNEL_ID)
+
+			path1 = path1.replaceAll("#F", MD5.MD5Cal(path))
+
+			FileUtils.movefile(path, path1)
+
+			// 如果有U，表示upload，提交到苹果商店中
+			if(self.isUpdate && CODE_SIGN_IDENTITY.indexOf("Apple Distribution:") == 0) {// 表示提交苹果商店
+				trace("提交苹果商店中...")
+				var idx = path.lastIndexOf(' ')
+				if(idx == -1) {
+					dump(path, "路径中找寻 ' ' 失败")
+					err = 6
+					break
+				}
+
+				path = path.substr(idx + 1, path.length)// 截取路径
+
+				var username = groupValue.SUBMIT_USERNAME
+				if(!username) {
+					dump("SUBMIT_USERNAME", "配置中缺少")
+					err = 7
+					break;
+				}
+				var password = groupValue.SUBMIT_PASSWORD
+				if(!password) {
+					dump("SUBMIT_PASSWORD", "配置中缺少")
+					err = 8
+					break;
+				}
+				// 检测，是否为dis，如果是，自动提交苹果商店
+				cmd = "xcrun altool --validate-app -f $PATH -t iOS -u $USER_NAME  -p $PASSWORD"
+				cmd = cmd.replaceAll("$USER_NAME", username)
+				cmd = cmd.replaceAll("$PASSWORD", password)
+				cmd = cmd.replaceAll("$PATH", path)
+				if(!Sys(cmd)) {
+					err = 9
+					break
+				}
+
+				cmd = "xcrun altool --upload-app -f $PATH -t iOS -u $USER_NAME  -p $PASSWORD"
+				cmd = cmd.replaceAll("$USER_NAME", username)
+				cmd = cmd.replaceAll("$PASSWORD", password)
+				cmd = cmd.replaceAll("$PATH", path)
+				if(!Sys(cmd)) {
+					err = 10
+					break
+				}
+			}
+		} else {
+			// 首先获取当前目录
+
+			var cmd = "java -jar -Duser.language=en -Dfile.encoding=UTF8 $HANDY_HOME/utils/apktool.jar b -o ../batch/temp/$CFG_NAME/2.apk ../batch/temp/$CFG_NAME/proj.android"
+			cmd = cmd.replaceAll("$CFG_NAME", cfgName)
+			Sys(cmd)
+
+			// 开始签名
+			cmd = "jarsigner -verbose -keystore ../batch/keystores/default.keystore -signedjar ../batch/temp/$CFG_NAME/3.apk ../batch/temp/$CFG_NAME/2.apk jucai -storepass yan55188 -keypass yan55188"
+			cmd = cmd.replaceAll("$CFG_NAME", cfgName)
+			Sys(cmd)
+
+			cmd = "../batch/temp/$CFG_NAME/2.apk"
+			cmd = cmd.replaceAll("$CFG_NAME", cfgName)
+			FileUtils.remove(cmd)
+
+			// 开始改名
+			var path = "../batch/temp/$CFG_NAME/3.apk"
+			path = path.replaceAll("$CFG_NAME", cfgName)
+
+			var path1 = "../../#A_#B_#C_#G_#D_#E_#F.apk"
+			path1 = path1.replaceAll("#A", cfgName + FORMAL)
+			path1 = path1.replaceAll("#B", info.versionName)
+			path1 = path1.replaceAll("#C", info.versionCode)
+			path1 = path1.replaceAll("#G", self.groupName)
+			path1 = path1.replaceAll("#D", info.CHANNEL_NAME)
+			path1 = path1.replaceAll("#E", info.CHANNEL_ID)
+			path1 = path1.replaceAll("#F", MD5.MD5Cal(path))
+
+			FileUtils.movefile(path, path1)
+		}
+	} while(false)
+	return err
+}
+
+// 填充组信息，一旦有有文件引用就加载进来
+function fullGroupInfo(groupValue) {
+	var err = 0
+	do {
+		if(!groupValue.have("reference_file")) {
+			err = 1
+			break
+		}
+		// 此时就获取文件内容并且加载！！！
+		var ary = groupValue.reference_file
+		var path
+		var hash
+		for(var _, v of ary) {
+			path = "../batch/configs/" + v
+
+			hash = base.readJson(path)
+
+			if(!hash) {
+				dump(path, "错误：找不到配置文件！")
+				err = 2
+				break
+			}
+
+			// 补充进去
+			for(var key, value in hash) {
+				if(!groupValue.have(key)) {
+					// 一旦外部存在，就无视内部的。
+					groupValue.put(key, value)
+				}
+			}
+		}
+		if(err) break
+		// 移除
+		groupValue.remove("reference_file")
+	} while(false)
+	return err
+}
+
+/*if JGG then*/
+/**
+	检测是否存在九宫格信息
+	@reutrn 0:已经处理了九宫格，1:需要试着处理九宫格，2:无法处理九宫格
+*/
+function haveJGG(md5_v) {
+	var have = 1
+	do {
+		var cfgName = self.cfgName
+		// 获取了图片的路径，开始操作
+		var path5 = "../batch/temp/$CFG_NAME/jggRes/$PATH.ignore"// 如果这个文件存在，表示这个图片无法处理九宫格
+		path5 = path5.replaceAll("$CFG_NAME", cfgName)
+		var path2 = path5.replaceAll("$PATH", md5_v)
+		if(FileUtils.exist(path2)) {// 存在就不处理
+			have = 2
+			break
+		}
+
+		// 检测目标文件夹是否存在这个九宫格图片
+		var path1 = "../batch/temp/$CFG_NAME/jggRes/$PATH.png"
+		path1 = path1.replaceAll("$CFG_NAME", cfgName)
+		path2 = path1.replaceAll("$PATH", md5_v)
+		// 两个文件同时存在，才处理
+		if(!FileUtils.exist(path2)) {// 如果存在，则不处理
+			break
+		}
+		var path3 = "../batch/temp/$CFG_NAME/jggRes/$PATH.meta"// 扩展信息
+		path3 = path3.replaceAll("$CFG_NAME", cfgName)
+		path2 = path3.replaceAll("$PATH", md5_v)
+		if(!FileUtils.exist(path2)) {
+			break
+		}
+		// 如果也有，那么检测内部是否完整
+		var info = FileUtils.readfile(path2)// 读取json信息
+
+		var ary = ["left", "right", "top", "bottom"]
+
+		var flag = false;
+		for(var _, v of ary) {
+			if(info.indexOf(v) == -1) {// 如果没找到就gg
+				flag = true
+				break
+			}
+		}
+		if(flag) {// 表示info不合法，结束
+			break
+		}
+
+		have = 0
+	} while(false)
+	return have
+}
+
+/**
+	往meta中写入uuid
+	path:
+*/
+function writeUUID(path) {
+	var err = 0
+	do {
+		var path3 = path + ".png.meta"
+		var jsonInfo = FileUtils.readfile(path3)
+		if(!jsonInfo) {
+			dump(path3, "打开文件失败")
+			err = 1
+			break
+		}
+		var idx = jsonInfo.indexOf("\"uuid\"")
+		if(idx == -1) {
+			dump(path3, "找寻第一个'uuid'失败")
+			err = 2
+			break
+		}
+		idx = jsonInfo.indexOf("\"uuid\"", idx + 6)
+		if(idx == -1) {
+			dump(path3, "找寻第二个'uuid'失败")
+			err = 3
+			break
+		}
+		var idx2 = jsonInfo.indexOf('"', idx + 6)
+		if(idx2 == -1) {
+			dump(path3, "找寻第一个'\"'失败")
+			err = 4
+			break
+		}
+		idx2++
+		idx = jsonInfo.indexOf('"', idx2)
+		if(idx == -1) {
+			dump(path3, "找寻第二个'\"'失败")
+			err = 5
+			break
+		}
+		var uuid = jsonInfo.substr(idx2, idx)
+		
+		path3 = path + "__JGG__.meta"// 为文件增加uuid
+		// 读取这个文件
+		var info = base.readJson(path3)
+		if(!info) {
+			dump(path3, "打开文件失败")
+			err = 6
+			break
+		}
+		info.uuid = uuid// 写入之后，再保存起来
+		if(err = base.saveJson(path3, info)) {// 保存失败，就报错
+			dump(path3, "存储文件失败")
+			break
+		}
+	} while(false)
+	return err
+}
+
+/**
+	处理九宫格的问题
+*/
+function process17(version) {
+	var err = 0
+	do {
+		trace("正在自动处理图片九宫格,自动过滤重复图片...")
+		var cfg_path = "../batch/temp/$CFG_NAME/config.json"
+		var cfgName = self.cfgName
+		cfg_path = cfg_path.replaceAll("$CFG_NAME", cfgName)
+
+		var cfg_info
+		var cfg_del = true
+
+		// 如果图片处理过九宫格，那么就将其存起来
+		var dir = "../batch/temp/$CFG_NAME/jggRes"
+		dir = dir.replaceAll("$CFG_NAME", cfgName)
+
+		if(FileUtils.exist(dir)) {
+			if(FileUtils.exist(cfg_path)) {
+				// 准备打开文件
+				cfg_info = base.readJson(cfg_path)
+				if(cfg_info.have("jgg_version")) {
+					if(cfg_info.jgg_version == version) {// 只有相等，才不删除
+						cfg_del = false
+					}
+				}
+			}
+		} 
+		if(cfg_del) {
+			dump(dir, "温馨提示，目录被清理")
+			FileUtils.rmdir(dir)
+			FileUtils.mkdir(dir)
+		}
+
+		var path
+		// 遍历所有图片
+		var list = []
+		FileUtils.dirlist("../assets", list, ".*.png$")
+		
+		if(list.length < 1) {
+			trace("一张png都找不到？")
+			break
+		}
+		// 将要处理的图片，放入哈希表
+		var pngHash = {}
+		for(var _, path of list) {
+			path = path.substr(0, path.length - 4)// 去掉扩展名
+			pngHash[path] = true
+		}
+
+		// 遍历json，去掉和json同名的png，因为动画的图片是不能处理的。
+		var jsons = []
+
+		FileUtils.dirlist("../assets", jsons, ".*.json$")
+		for(var _, path of jsons) {
+			path = path.substr(0, path.length - 5)// 去掉扩展名
+			if(pngHash.have(path)) {// 包含这张图片，直接无视
+				pngHash.remove(path)
+			}
+		}
+
+		// 遍历plist，因为合图也无法处理九宫格
+		var plists = []
+		FileUtils.dirlist("../assets", plists, ".*.plist$")
+		for(var _, path of plists) {
+			path = path.substr(0, path.length - 6)// 去掉扩展名
+			if(pngHash.have(path)) {// 包含这张图片，直接无视
+				pngHash.remove(path)
+			}
+		}
+
+		// 开始处理九宫格，获取文件的MD5，然后将其处理后放到jggres目录下即可
+		//var node = pngHash.nextNode(null);
+		var cmd = "$PNG9_HOME/png9 -P $PATH.png"
+
+		var md5_v
+
+		var path2
+
+		var cmd2 = "$DIR/$MD5.png"
+		cmd2 = cmd2.replaceAll("$DIR", dir)
+
+		var cmd4 = "$DIR/$MD5.meta";
+		cmd4 = cmd4.replaceAll("$DIR", dir)
+
+		var path3 = "$DIR/$MD5.ignore"
+		path3 = path3.replaceAll("$DIR", dir)
+
+		var jgg_ignore = self.config.projectInfo[cfgName].jgg_ignore
+		if(jgg_ignore) {
+			for(var _, v of jgg_ignore) {
+				path2 = "../assets/" + v
+				if(!FileUtils.exist(path2)) {
+					dump(path2, "警告：无视九宫格，找不到图片")
+					continue
+				}
+
+				// 强行到目录下生成无视的图片即可，这样会导致后续逻辑无视九宫格处理，这样就达到目的了
+				md5_v = MD5.MD5Cal(path2)// 获取了文件的MD5值，然后在目录下生成这个即可
+				path2 = path3.replaceAll("$MD5", md5_v)
+				if(!FileUtils.exist(path2)) {// 有了就无视即可
+					FileUtils.writefile(path2, "1")
+				}
+			}
+			if(err) break
+		}
+
+		var pngfiles = {}
+
+		var ret
+		var png9infos = {}// 那些uuid处理过九宫格。用于后期修改预支和场景
+		var repeatInfos = {}// 重复的信息
+		// 如果图片一样，需要统计好
+
+		for(var path, _ in pngHash) {
+			// 获取了图片的路径，开始操作
+			md5_v = MD5.MD5Cal(path + ".png")
+			if(pngfiles.have(md5_v)) {// 如果出现重复图片
+				path2 = pngfiles[md5_v]// 获取文件
+				if(err = readSubMetasUUID(path)) {
+					trace("readSubMetasUUID失败")
+					break// 将老的替换成新的
+				}
+				var uuid1 = ret_temp
+
+				if(err = readSubMetasUUID(path2)) {
+					trace("readSubMetasUUID失败")
+					break
+				}
+				repeatInfos[uuid1] = ret_temp
+			} else {
+				// 压入文件的MD5，和路径
+				pngfiles[md5_v] = path// 写入文件对应的MD5值
+				ret = haveJGG(md5_v)
+
+				// 2、表无法处理九宫格，无视掉
+				if(ret == 1) {// 试着处理一下九宫格
+					// 检查文件是否属于无视的的队列中
+					// 开始处理九宫格
+					// 将文件移动过去即可
+					var v = system(cmd.replaceAll("$PATH", path))
+					if(v != 0) {
+						// 创建一个文件，标志着这个图片不能处理九宫格
+						path2 = path3.replaceAll("$MD5", md5_v)
+						FileUtils.writefile(path2, "1")
+						ret = 2// 无法处理九宫格
+					} else {
+						// 将九宫格文件复制过去再说
+						FileUtils.copyfile(path + "__JGG__.png", cmd2.replaceAll("$MD5", md5_v))
+						// 先修改meta文件，增加uuid
+						if(err = writeUUID(path)) {// 往.meta文件中写入uuid
+							// dump(path, "写入'uuid'失败")
+							trace("写入'uuid'失败" + path)
+							break
+						}
+						FileUtils.copyfile(path + "__JGG__.meta", cmd4.replaceAll("$MD5", md5_v))
+					}
+				}
+				if(ret != 2) {
+					if(err = modifyMetaFile(path, md5_v)) {
+						trace("修改图片的meta文件失败" + path)
+						break
+					}
+					// 读取文件，修改文件的大小
+					png9infos[ret_temp] = true// 压入到哈希表，证明此图片已经九宫格处理过了
+				}
+			}
+		}
+	
+		if(err) break
+
+		// 需要遍历一下重复的
+		for(var key, value in repeatInfos) {
+			if(png9infos.have(key)) {// 包含任何一个，都将其压入九宫格
+				png9infos[value] = true
+			}
+			if(png9infos.have(value)) {
+				png9infos[key] = true
+			}
+		}
+
+		// 被九宫格处理过的图片都已经放到容器中了,png9infos，开始修改所有的
+		if(err = modifyPrefab(png9infos, repeatInfos)) {
+			trace("modifyPrefab break")
+			break
+		}
+
+		// 如果未出错，就将九宫格版本存储起来，避免下次再重复九宫格
+		if(cfg_del) {
+			if(!cfg_info) {
+				cfg_info = {}
+			}
+			cfg_info.jgg_version = version
+			if(err = base.saveJson(cfg_path, cfg_info)) {
+				trace("存储文件失败" + cfg_path)
+				err = 6
+				break
+			}
+		}
+	} while(false)
+	return err
+}
+
+/*
+	修改预支或场景里面的九宫格引用
+*/
+function modifyPrefab(png9infos, repeatInfos) {
+	var err = 0
+	// 开始遍历，
+	var list = []
+	FileUtils.dirlist("../assets", list, ".*.prefab$")
+	// 遍历修改文件
+	for(var _, path of list) {
+		if(err = modify7(path, png9infos, repeatInfos)) {
+			break
+		}
+	}
+	return err
+}
+
+/*
+	修改预制文件
+*/
+function modify7(path, png9infos, repeatInfos) {
+	var err = 0
+	do {
+		var content = FileUtils.readfile(path)
+		if(!content) {
+			dump(path, "打开文件失败")
+			err = 1
+			break
+		}
+		var key = "\"__uuid__\": \""
+		var keyLen = key.length
+		var key2 = "\""
+		var value
+		var idx
+		var idx2 = 0
+		var idx3
+		var uuid
+
+		var key3 = "\"_type\": "
+		var key3Len = key3.length
+		var key4 = "\"_sizeMode\": "
+		var key4Len = key4.length
+
+		var key6 = "\"_isTrimmedMode\": "
+		var key6Len = key6.length
+
+		var key5 = "\"_spriteFrame\": {"
+		var key5Len = key5.length
+
+		// var modify = false
+		var start = 0
+		while(true) {
+			start = content.indexOf(key5, start)// 只修改精灵帧
+			if(start == -1) {
+				break
+			}
+			start += key5Len
+
+			idx = content.indexOf(key, start)
+			if(idx == -1) {
+				dump(path, "找不到" + key)
+				err = 2
+				break
+			}
+			// 搜索，是否引用了九宫格文件
+			idx += keyLen
+			idx2 = content.indexOf(key2, idx)
+			if(idx2 == -1) {
+				dump(path, "找不到" + key2)
+				err = 3
+				break
+			}
+
+			uuid = content.substr(idx, idx2)// 截取uuid
+			
+			var modify = false
+			if(repeatInfos.have(uuid)) {// 如果是这个，就需要修改一波
+				uuid = repeatInfos.get(uuid)// 获取待替换的图片
+				// 替换掉
+				content = content.replace(idx, idx2 - idx, uuid)
+				modify = true
+				// dump(uuid, "uuid 1")
+			}
+
+			if(png9infos.have(uuid)) {// 表示是个九宫格，那么准备修改
+				// dump(uuid, "uuid 2")
+				// 修改0和1
+				idx3 = content.indexOf(key3, start)
+				if(idx3 == -1) {
+					trace("modify7-1")
+					err = 4
+					break
+				}
+				idx3 += key3Len
+				idx = content.indexOf(',', idx3)
+				if(idx == -1) {
+					trace("modify7-2")
+					err = 5
+					break
+				}
+				content = content.replace(idx3, idx - idx3, "1")
+
+				idx3 = content.indexOf(key4, start)
+				if(idx3 == -1) {
+					trace("modify7-3")
+					err = 6
+					break
+				}
+				idx3 += key4Len
+				idx = content.indexOf(',', idx3)
+				if(idx == -1) {
+					trace("modify7-4")
+					err = 7
+					break
+				}
+				// 开始替换
+				content = content.replace(idx3, idx - idx3, "0")
+
+				// 不管是不是九宫格，一律将_isTrimmedMode设置为false
+				idx = content.indexOf(key6, start)
+				if(idx == -1) {
+					dump(path, "找不到" + key6)
+					err = 8
+					break
+				}
+				idx += key6Len
+				idx2 = content.indexOf(',', idx)
+				if(idx2 == -1) {
+					dump(path, "找不到','")
+					err = 9
+					break
+				}
+				// 应该没有透明度这种问题，美术应该不会这样处理
+				content = content.replace(idx, idx2 - idx, "false")
+				modify = true
+			}
+			if(!modify) continue
+			// 如果修改了，就需要将文件存起来
+			FileUtils.writefile(path, content)
+		}
+	} while(false)
+	return err
+}
+
+/**
+	获取.png.meta文件的uuid，注意path不要带扩展名
+*/
+function readSubMetasUUID(path) {
+	var err = 0
+	do {
+		var path2 = path + ".png.meta"
+		var info2 = base.readJson(path2)// 读取文件，进行修改
+		if(!info2) {
+			dump(path2, "打开文件失败")
+			err = 1
+			break
+		}
+		var idx = path.lastIndexOf('/')
+		if(idx == -1) {
+			dump(path, "找不到'/'")
+			err = 2
+			break
+		}
+		var subMetas = info2.subMetas
+		if(!subMetas) {
+			dump(info2, "文件'" + path2 + "'中找不到'subMetas'")
+			err = 3
+			break
+		}
+		var fileName = path.substr(idx + 1, path.length)
+		subMetas = subMetas[fileName]
+		if(!subMetas) {
+			dump(fileName, "文件'" + path2 + "'中找不到'" + fileName + "'")
+			err = 4
+			break
+		}
+		ret_temp = subMetas.uuid
+	} while(false)
+	return err
+}
+
+/**
+	修改图片的meta文件
+*/
+function modifyMetaFile(path, md5_v) {
+	var err = 0
+	do {
+		// 读取文件，修改文件的大小
+		var cfgName = self.cfgName
+		var path1 = "../batch/temp/$CFG_NAME/jggRes/" + md5_v + ".meta"
+		path1 = path1.replaceAll("$CFG_NAME", cfgName)
+
+		var info = base.readJson(path1)
+
+		if(!info) {
+			dump(path1, "打开文件失败")
+			err = 1
+			break
+		}
+		
+		var uuid = info.uuid
+		if(!uuid) {
+			dump(path1, "找不到'uuid'字段")
+			err = 2
+			break
+		}
+
+		var path2 = path + ".png.meta"
+		var info2 = base.readJson(path2)// 读取文件，进行修改
+		if(!info2) {
+			dump(path2, "打开文件失败")
+			err = 3
+			break
+		}
+
+		var idx = path.lastIndexOf('/')
+		if(idx == -1) {
+			dump(path, "找不到'/'")
+			err = 4
+			break
+		}
+		var fileName = path.substr(idx + 1, path.length)
+
+		// 修改原图的meta文件的内容
+		// 修改宽高
+		info2.width = info.rawWidth
+		info2.height = info.rawHeight
+		var subMetas = info2.subMetas
+		if(!subMetas) {
+			dump(path2, "文件中找不到'subMetas'")
+			err = 5
+			break
+		}
+		subMetas = subMetas[fileName]
+		if(!subMetas) {
+			dump(path2, "文件中找不到'" + fileName + "'")
+			err = 6
+			break
+		}
+
+		// 刷出尺寸
+		var arys1 = ["width", "height", "rawWidth", "rawHeight", "borderLeft", "borderRight", "borderTop", "borderBottom"]
+		var arys2 = ["rawWidth", "rawHeight", "rawWidth", "rawHeight", "left", "right", "top", "bottom"]
+
+		var size = arys1.length
+		var key1
+		var key2
+
+		for(var i, key2 of arys2) {
+			if(!info.have(key2)) {
+				dump(info, "info")
+				dump(path1, "1.文件中缺少" + key2)
+				err = 7
+				break
+			}
+			key1 = arys1[i]
+			if(!subMetas.have(key1)) {
+				dump(path2, "2.文件中缺少" + key1)
+				err = 8
+				break
+			}
+			subMetas[key1] = info[key2]
+		}
+		if(err) break
+
+		// 存储文件失败
+		var content = Json.toString(info2)
+		if(!content) {
+			trace("转换成json失败")
+			err = 9
+			break
+		}
+		// dump(FileUtils.UTF8_NOBOM, "FileUtils.UTF8_NOBOM")
+		FileUtils.writefile(path2, content, FileUtils.UTF8_NOBOM)
+
+		// 把图片复制过来，直接替换即可
+		var cmd = "../batch/temp/$CFG_NAME/jggRes/$MD5.png"
+		cmd = cmd.replaceAll("$CFG_NAME", cfgName)
+		cmd = cmd.replaceAll("$MD5", md5_v)
+
+		FileUtils.copyfile(cmd, path + ".png")
+		ret_temp = uuid
+	} while(false)
+	return err
+}
+/*end*/
+
+// 复制项目资源
+function process14() {
+	var err = 0
+	do {
+		trace("复制项目资源中...")
+
+		var cfgName = self.cfgName
+		var path = "../../$CFG_NAME"
+		path = path.replaceAll("$CFG_NAME", cfgName)
+		if(!FileUtils.exist(path)) {
+			dump(path, "目录不存在")
+			err = 1
+			break
+		}
+
+		var dirs = ["assets", "settings", "creator.d.ts", "jsconfig.json", "project.json", "tsconfig.json"];
+		var cmd2 = "../../$CFG_NAME/"
+		cmd2 = cmd2.replaceAll("$CFG_NAME", cfgName)
+
+		var err = 0
+		for(var i, path of dirs) {
+			if(i < 2) {
+				FileUtils.rmdir("../" + path)
+				FileUtils.copytree(cmd2 + path, "../" + path)
+			} else {
+				FileUtils.remove("../" + path)
+				FileUtils.copyfile(cmd2 + path, "../" + path)
+			}
+		}
+	} while(false)
+	return err
+}
+
+/*
+	获取目录的svn版本信息
+*/
+function process18(dir) {
+	var err = 0
+	do {
+		var cmd = "svn st $dir > temp.txt"
+		cmd = cmd.replaceAll("$dir", dir)
+		if(system(cmd) != 0) {
+			dump(dir, "获取svn状态失败")
+			err = 1
+			break
+		}
+
+		var content = FileUtils.readfile("temp.txt")
+		if(!content) {
+			trace("打开文件失败")
+			err = 2
+			break
+		}
+		if(content.length > 0) {
+			dump(content, "请确保该目录" + dir + "下的修改都提交到svn")
+			err = 3
+			break;
+		}
+		// 如果没有修改，开始获取其svn版本
+		cmd = "svn info $dir > temp.txt"
+		cmd = cmd.replaceAll("$dir", dir)
+		if(system(cmd) != 0) {
+			dump(dir, "获取svn信息失败")
+			err = 4
+			break
+		}
+		content = FileUtils.readfile("temp.txt")
+
+		FileUtils.remove("temp.txt")
+
+		var key = "Last Changed Rev: "
+		content = content.replaceAll("最后修改的版本: ", key)// 为了获取最终修改版本
+
+		var idx = content.indexOf(key)
+		var idx1 = content.indexOf('\n', idx)
+
+		// 游戏资源版本
+		ret_temp = content.substr(idx + key.length, idx1)
+	} while(false)
+	return err
+}
+
+function process19() {
+	var err = 0
+	do {
+		trace("扫描游戏资源状态中...")
+		// 检测资源是否未提交
+		var cfgName = self.cfgName
+		var dir = "../../$cfgName/assets/$name"
+
+		dir = dir.replaceAll("$cfgName", cfgName)
+
+		var ary = ["res", "resources"]
+
+		var path
+		var vers = []
+		for(var _, v of ary) {
+			if(err = process18(dir.replaceAll("$name", v))) {// 获取版本信息
+				break
+			}
+			vers.add(ret_temp)
+		}
+		if(err) break
+
+		var version = vers[0] + "-" + vers[1]
+
+		// 检测这个目录是否存在，如果存在，就写入信息
+		path = "../batch/temp/__res/" + version
+		if(!FileUtils.exist(path)) {
+			self.assetsSvnVersion = version// 获取了资源的版本信息
+		} else {
+			self.assetsSvnVersion1 = version// 获取了资源的版本信息
+		}
+
+	} while(false)
+	return err
+}
+
+function process3() {
+	var err = 0
+	do {
+		if(err = process19()) {
+			break
+		}
+
+		trace("正在初始化中...")
+
+		var info = base.readJson("../project.json")
+		if(!info) {
+			dump("../project.json", "打开文件失败")
+			err = 1
+			break
+		}
+		var version = info.version
+		if(!version) {
+			dump("version", "project.json 缺少版本信息")
+			err = 2
+			break
+		}
+		self.creator_version = version// 智能找到creator
+
+		if(self.projType != "web") {
+			var path = "../batch/subPackage.json"
+			var hash = base.readJson(path)
+			if(!hash) {
+				dump(path, "错误：打开子包配置失败！")
+				err = 3
+				break
+			}
+			self.subCfg = hash
+		}
+
+		// 避免重复创建目录
+		var cfgName = self.cfgName
+
+		// 读取渠道文件
+		var path = "../batch/configs/#A.json"
+		path = path.replaceAll("#A", cfgName)
+		var hash = base.readJson(path)
+
+		if(!hash) {
+			dump(path, "错误：打开配置文件失败！")
+			err = 4
+			break
+		}
+
+		var groupName = self.groupName
+		if(!hash.have(groupName)) {
+			dump(path, "错误：配置中找不到对应的组名！！" + groupName)
+			err = 5
+			break
+		}
+
+		self.groupInfo = hash[groupName]
+		var cfg = base.readJson("../batch/config.json")
+		self.config = cfg
+
+		if(cfg.have("flags")) {// 标签
+			// 添加标签到flag中
+			var flags = cfg.flags
+			if(flags.have(cfgName)) {
+				var flags2 = flags[cfgName]
+				var flags3 = self.flags
+				for(var _, v of flags2) {
+					flags3.add(v)
+				}
+			}
+		}
+
+		// 整理flag
+		process11()
+
+		path = "../build/jsb-default/.cocos-project.json"
+		var info3 = base.readJson(path)
+		if(!info3) {
+			dump(path, "打开文件失败")
+			err = 6
+			break
+		}
+		self.projectName = info3.projectName
+	} while(false)
+	return err
+}
+
+/**
+	整理flag，检测配置中是否存在这个渠道名，存在就是合并起来
+*/
+function process11() {
+	// 整理flags
+	var flags = self.flags
+	var hash3 = {}
+	for(var _, v of flags) {
+		hash3[v] = true
+	}
+	var new_flags = []
+	for(var k, _ in hash3) {
+		new_flags.add(k)
+	}
+	self.flags = new_flags
+}
+
+function process2() {
+	var err = 0
+	do {
+		trace("优化资源中，请稍安勿躁~")
+		var cfgName = self.cfgName
+
+		var dir = "../batch/temp/$CFG_NAME/subPackage"
+		dir = dir.replaceAll("$CFG_NAME", cfgName)
+
+		// 重新创建子包
+		FileUtils.rmdir(dir)
+		FileUtils.mkdir(dir)// global表示全局资源
+
+		// 遍历所有的文件
+		if(self.projType == "ios") {
+			dir = "../batch/temp/$CFG_NAME/proj.ios_src/Payload/$projectName-mobile.app/res"
+			dir = dir.replaceAll("$projectName", self.projectName)
+		} else {
+			dir = "../batch/temp/$CFG_NAME/proj.android_src/assets/res"
+		}
+		dir = dir.replaceAll("$CFG_NAME", cfgName)
+
+		var flist = []
+		FileUtils.dirlist(dir, flist)
+		if(flist.length == 0) {
+			dump(dir, "一个文件都找不到?")
+			err = 1
+			break
+		}
+		var idx1, idx2
+		var sub_package = "global"// 子包路径
+
+		var cmd_1 = "../batch/temp/$CFG_NAME/subPackage/$SUBNAME$DSC"
+		cmd_1 = cmd_1.replaceAll("$CFG_NAME", cfgName)
+		var cmd_2
+
+		var cmd1 = "$HANDY_HOME/utils/ios/pngquant --ext .pngo #A"
+
+		// 复制优化过的图片至子包
+
+		// 暂时不能加密，因为苹果增量更新会出bug。
+		/*if PNG_ENCRYPT then*/
+		var cmd7 = "$HANDY_HOME/utils/ios/encryptionFile -P $PATHo -K $KEY"// 加密文件
+		if(!self.config.have("png_encrypt")) {
+			dump("png_encrypt", "错误：未找到加密的密钥")
+			err = 1
+			break
+		}
+		cmd7 = cmd7.replaceAll("$KEY", "" + self.config.png_encrypt)
+		/*else*`
+		var cmd9 = "mv -f $Ao ../batch/temp/$CFG_NAME/tempRes/$B"
+		cmd9 = cmd9.replaceAll("$CFG_NAME", cfgName)
+		var cmd10
+		/*end*/
+
+		var exName
+
+		var path1 = "../batch/temp/$CFG_NAME/tempRes/$A"// 存放优化的图片路径
+		path1 = path1.replaceAll("$CFG_NAME", cfgName)
+
+		var path2
+		var md5Val
+		var path
+
+		var tempDir = "../batch/temp/$CFG_NAME/tempRes/"
+		tempDir = tempDir.replaceAll("$CFG_NAME", cfgName)
+
+		var path337 = flist[0]
+		var dir878 = dir.substr(2)// 搜索一下目录所在索引
+		var idx = path337.indexOf(dir878)
+		if(idx == -1) {
+			dump(dir878, "目录")
+			dump(path337, "搜索路径失败")
+			err = 1
+			break
+		}
+		var dir_len = idx + dir878.length
+
+		for(var _, path of flist) {
+			idx1 = path.lastIndexOf('/')
+			idx2 = path.lastIndexOf('.')
+
+			do {
+				if(idx2 != -1) {
+					exName = path.substr(idx2, path.length)
+					if(exName == ".png") {
+						do {
+							// 先检测文件是否存在
+							md5Val = MD5.MD5Cal(path)
+							path2 = path1.replaceAll("$A", md5Val)
+							if(FileUtils.exist(path2)) {
+								// 检测文件MD5是否一致
+								break
+							}
+							// 先优化至具体目录
+							Sys(cmd1.replaceAll("#A", path))
+
+							/*if PNG_ENCRYPT then*/
+							// 然后需要加密
+							Sys(cmd7.replaceAll("$PATH", path))
+
+							// 然后再移动到目的地
+							FileUtils.movefile(path + "oc", path2)
+							/*else*`
+							cmd10 = cmd9.replaceAll("$A", path)
+							// 然后再移动到目的地
+							cmd10 = cmd10.replaceAll("$B", md5Val)
+							Sys(cmd10);
+							/*end*/
+
+							// 删除优化中的图片
+							FileUtils.remove(path + "o")// 删除文件
+						} while(false)
+						// 复制文件到具体目录
+						cmd_2 = cmd_1.replaceAll("$DSC", path.substr(dir_len, path.length))
+						cmd_2 = cmd_2.replaceAll("$SUBNAME", sub_package)
+						FileUtils.copyfile(tempDir + md5Val, cmd_2)
+						break
+					}
+				}
+
+				cmd_2 = cmd_1.replaceAll("$DSC", path.substr(dir_len, path.length))
+				cmd_2 = cmd_2.replaceAll("$SUBNAME", sub_package)
+
+				// 确定了一个游戏类型，将其分配到具体的目录下：
+				// 首先创建目录，然后复制这个路径到这个下面
+				FileUtils.copyfile(path, cmd_2)
+
+			} while(false)
+			if(err) break
+		}
+	} while(false)
+	// 清理目录信息
+	return err
+}
+
+// 检测路径属于哪个子包
+function getSubPackageName(path) {
+	var ret = "global"
+	do {
+		if(!path) {
+			break
+		}
+		var idx = path.indexOf('/')
+		if(idx == -1) {
+			break
+		}
+		idx = path.indexOf('/', idx + 1)
+		if(idx == -1) {
+			break
+		}
+		idx++
+		var idx2 = path.indexOf('/', idx)
+		if(idx2 == -1) {
+			break
+		}
+		idx2 = path.indexOf('/', idx2 + 1)
+		if(idx2 == -1) {
+			break
+		}
+		path = path.substr(idx, idx2)
+		var hash = self.subCfg
+		if(!hash.have(path)) {
+			break
+		}
+		ret = hash[path]
+	} while(false)
+	return ret
+}
+
+function strDebug(cmd) {
+	return cmd.replaceAll("$DEBUG", self.debug ? "simulator" : "publish")
+}
+
+function modifyIndexFile(platform) {
+	var err = 0
+	do {
+		var index_html_path = "../build/web-$PLATFORM/index.html"
+		index_html_path = index_html_path.replaceAll("$PLATFORM", platform)
+		var content = FileUtils.readfile(index_html_path)
+		if(!content) {
+			dump(index_html_path, "打开文件失败")
+			err = 1
+			break
+		}
+		var key1 = "<head>"
+		var index = content.indexOf(key1)
+		if(index == -1) {
+			err = 2
+			break
+		}
+		index += key1.length
+
+		content = content.insert("\n\t<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\">", index)
+		content = content.insert("\n\t<meta http-equiv=\"X-UA-Compatible\" content=\"IE=8\">", index)
+		content = content.insert("\n\t<meta http-equiv=\"Expires\" content=\"0\">", index)
+		content = content.insert("\n\t<meta http-equiv=\"Pragma\" content=\"no-cache\">", index)
+		content = content.insert("\n\t<meta http-equiv=\"Cache-control\" content=\"no-cache\">", index)
+		content = content.insert("\n\t<meta http-equiv=\"Cache\" content=\"no-cache\">", index)
+
+		FileUtils.writefile(index_html_path, content)
+
+	} while(false)
+	return err
+}
+
+function process_web1(groupValue) {
+	var err = 0
+	do {
+		trace("正在打 Web 包...")
+
+		var platform = groupValue.platform
+		if(!platform) {
+			dump("缺少platfrom配置", "错误")
+			err = 1
+			break
+		}
+
+		var cmd = "../build/project/build/web-$PLATFORM"
+		cmd = cmd.replaceAll("$PLATFORM", platform)
+
+		FileUtils.rmdir(cmd)// 删除这个目录
+
+		if(platform == "mobile") {
+			cmd = "/Applications/CocosCreator/Creator/$VERSION/CocosCreator.app/Contents/MacOS/CocosCreator --path ../ --build \"title=$NAME;platform=web-$PLATFORM;debug=$DEBUG;sourceMaps=false;inlineSpriteFrames=true;mergeStartScene=false;optimizeHotUpdate=false;webOrientation=$orientation;md5Cache=true;autoCompile=true\""
+			var orientation = groupValue.orientation
+			if(!orientation) {
+				dump("orientation", "错误:配置中缺少")
+				err = 2
+				break
+			}
+			cmd = cmd.replaceAll("$orientation", orientation)
+		} else if(platform == "desktop") {
+			cmd = "/Applications/CocosCreator/Creator/$VERSION/CocosCreator.app/Contents/MacOS/CocosCreator --path ../ --build \"previewWidth=$WIDTH;previewHeight=$HEIGHT;title=$NAME;platform=web-$PLATFORM;debug=$DEBUG;sourceMaps=false;inlineSpriteFrames=true;mergeStartScene=false;optimizeHotUpdate=false;md5Cache=true;autoCompile=true\""
+			var viewport_size = groupValue.viewport_size
+			if(!viewport_size) {
+				dump("viewport_size", "错误:配置中缺少")
+				err = 3
+				break
+			}
+			cmd = cmd.replaceAll("$WIDTH", "" + viewport_size.width)
+			cmd = cmd.replaceAll("$HEIGHT", "" + viewport_size.height)
+		} else {
+			dump(platform, "错误:不能识别的平台")
+			err = 4
+			break
+		}
+
+		cmd = cmd.replaceAll("$VERSION", self.creator_version)
+		cmd = cmd.replaceAll("$DEBUG", self.debug ? "true" : "false")
+		cmd = cmd.replaceAll("$PLATFORM", platform)
+		if(!groupValue.have("name")) {
+			dump("name", "错误:配置中缺少")
+			err = 5
+			break
+		}
+		cmd = cmd.replaceAll("$NAME", groupValue.name)
+
+
+		if(self.get("debug")) {
+			cmd = cmd.replaceAll("$DEBUG", "embedWebDebugger=true")
+		} else {
+			cmd = cmd.replaceAll("$DEBUG", "")
+		}
+		if(!Sys(cmd)) {
+			dump(cmd, "执行命令失败")
+			break
+		}
+
+		// 修改文件
+		if(err = modifyIndexFile(platform)) break
+	} while(false)
+	return err
+}
+
+/**
+	切脚本的标签
+*/
+function process13() {
+	var err = 0
+	do {
+		var cmd = "$HANDY_HOME/utils/ios/JppLua $FLAGS ../assets/scripts/.*.ts"
+
+		var flags = self.flags
+		var flag
+
+		var flag_str = "";
+		for(var _, v of flags) {
+			flag_str += " -d " + v
+		}
+		cmd = cmd.replaceAll("$FLAGS", flag_str)
+		if(system(cmd) != 0) {
+			trace("切标签失败")
+			err = 1
+			break
+		}
+	} while(false)
+	return err
+}
+
+// 操作 android 打包工程，也就是换个名字。。
+function androidStudioProject(apkProjectDir, newPackName) {
+	var err = 0
+	do {
+		// 检测文件是否存在，存在的话，先将名字还原
+		var dir = "../build/jsb-default/frameworks/runtime-src"
+		// var files = ["app/libs", "res", "src", "app/AndroidManifest.xml", "app/build.gradle", "game/build.gradle", "game/AndroidManifest.xml"]
+		// // 将proj.android-studio内指定的文件删除再说
+		// var path
+		// var cmd = "$dir/proj.android-studio/$file"
+		// cmd = cmd.replaceAll("$dir", dir)
+
+		// var cmd2
+		// var cmd3 = dir + "/" + apkProjectDir + "/"
+
+		// for(var i, v of files) {
+		// 	cmd2 = cmd.replaceAll("$file", v)
+		// 	if(i < 3) {
+		// 		FileUtils.rmdir(cmd2)// 删除目录
+		// 		FileUtils.copytree(cmd3 + v, cmd2)
+		// 	} else {
+		// 		FileUtils.remove(cmd2)// 删除文件
+		// 		FileUtils.copyfile(cmd3 + v, cmd2)
+		// 	}
+		// }
+		// if(err) {
+		// 	break
+		// }
+		// FileUtils.rmdir(dir + "/proj.android-studio")
+		// 直接覆盖完事
+		// dump(dir + "/" + apkProjectDir, "-----------------------")
+		FileUtils.copytree(dir + "/" + apkProjectDir, dir + "/proj.android-studio")
+
+// trace("检查")
+// 		base.pause()
+
+		system("chmod +x " + dir + "/proj.android-studio/gradlew")// 增加权限
+
+
+		// 复制完毕，开始修改包名了。。
+		// 遍历一下所有文件。。开始操作
+		// 先定位原始包名是什么
+		var path = dir + "/proj.android-studio/app/AndroidManifest.xml"
+		var content = FileUtils.readfile(path)
+		if(!content) {
+			dump(path, "打开文件失败")
+			err = 2
+			break
+		}
+		var key = "package=\""
+		var keyLen = key.length
+		var idx = content.indexOf(key)
+		if(idx == -1) {
+			dump(path, "找不到" + key)
+			err = 3
+			break
+		}
+		idx += keyLen
+		var idx1 = content.indexOf('"', idx)
+		if(idx1 == -1) {
+			dump(path, "找不到'\"'")
+			err = 4
+			break
+		}
+		// 得到了包名，改一下包名保存完事
+		var packageName = content.substr(idx, idx1)
+
+		if(packageName != newPackName) {// 包名相同，就不操作了
+			content = content.replaceAll(packageName, newPackName)
+			FileUtils.writefile(path, content)
+
+			// var ary = []
+			// path = dir + "/proj.android-studio/game/AndroidManifest.xml"
+			// ary.add(path)
+			path = dir + "/proj.android-studio/app/build.gradle"
+			// ary.add(path)
+
+			// for(var _, path of ary) {
+			content = FileUtils.readfile(path)
+			if(!content) {
+				dump(path, "打开文件失败")
+				err = 6
+				break
+			}
+			content = content.replaceAll(packageName, newPackName)
+			FileUtils.writefile(path, content)
+			// }
+			// if(err) {
+			// 	break
+			// }
+
+			// 修改源代码的路径
+			// 遍历所有的java文件，修改其包名内容
+
+			path = dir + "/proj.android-studio/src"
+			var list = []
+			FileUtils.dirlist(path, list, ".*.java$")// ergodic(self, path, "java")
+			for(var _, path of list) {
+				content = FileUtils.readfile(path)
+				if(content.indexOf(packageName) != -1) {// 表示找到包名，准备修改
+					content = content.replaceAll(packageName, newPackName)// 替换包名
+					FileUtils.writefile(path, content)
+				}
+			}
+			if(err) {
+				break
+			}
+			// 然后改一下目录的名字即可
+			path = dir + "/proj.android-studio/src/" + packageName.replaceAll(".", "/")
+
+			if(FileUtils.exist(path)) {
+				// 开始改名
+				var src_path = path
+
+				path = dir + "/proj.android-studio/src/" + newPackName.replaceAll(".", "/")
+				if(FileUtils.exist(path)) {
+					dump(path, "包目录已存在，更改包名失败！")
+					err = 9
+					break;
+				}
+
+				FileUtils.movetree(src_path, path)
+			}
+		}
+
+		// 将打包信息存储起来
+		self.put("apkPackageInfo", [apkProjectDir, newPackName])
+
+	} while(false)
+	return err
+}
+
+// 准备好包文件
+function process1(groupValue) {
+	var err = 0
+	do {
+		trace("准备打apk包...")
+
+		// 获取包名。。
+		var apkProjectDir = groupValue.ApkProjectDir
+		if(!apkProjectDir) {
+			dump(apkProjectDir, "缺少配置")
+			err = 1
+			break
+		}
+
+		// 获取工程的版本信息
+		if(err = process18("../build/jsb-default/frameworks/runtime-src/" + apkProjectDir)) break
+		var ver = ret_temp
+		self.apkSvnVersion = ver
+
+		var packageName = groupValue.package_name
+		if(!packageName) {
+			dump(packageName, "缺少配置")
+			err = 2
+			break
+		}
+		var dirName = ver + "-" + apkProjectDir + "-" + packageName
+		dirName = dirName.replaceAll(".", "-")
+		// 获取工程目录，如果存在，直接快速打包就ok。。。
+		var path = "../batch/temp/__apks/" + dirName// 获取目录
+
+		var have = FileUtils.exist(path)// 如果目录存在，则直接操作
+
+		var cmd = "/Applications/CocosCreator/Creator/$VERSION/CocosCreator.app/Contents/MacOS/CocosCreator --path ../ --build \"platform=android;debug=$DEBUG;sourceMaps=false;inlineSpriteFrames=false;mergeStartScene=false;optimizeHotUpdate=false;packageName=$PACK_NAME;useDebugKeystore=true;orientation=$orientation;template=default;apiLevel=$apiLevel;appABIs=['armeabi-v7a'];md5Cache=false;encryptJs=true;xxteaKey=$XXTEAKEY;zipCompressJs=true;autoCompile=$COMPILE;buildScriptsOnly=$BSO\""
+		cmd = cmd.replaceAll("$apiLevel", groupValue.have("apiLevel") ? groupValue.apiLevel : "android-28")
+		cmd = cmd.replaceAll("$DEBUG", self.debug ? "true" : "false")
+		cmd = cmd.replaceAll("$PACK_NAME", groupValue.package_name)
+		cmd = cmd.replaceAll("$VERSION", self.creator_version)
+		cmd = cmd.replaceAll("$COMPILE", have ? "false" : "true")// 是否自动编译
+		cmd = cmd.replaceAll("$BSO", self.have("assetsSvnVersion") ? "false" : "true")// 只编译脚本
+
+		var orientation = self.config.projectInfo[self.cfgName].orientation
+		var tt = "{'landscapeLeft':$L,'landscapeRight':$R,'portrait':$T,'upsideDown':$B}"
+		tt = tt.replaceAll("$L", "" + orientation.landscapeLeft)
+		tt = tt.replaceAll("$R", "" + orientation.landscapeRight)
+		tt = tt.replaceAll("$T", "" + orientation.portrait)
+		tt = tt.replaceAll("$B", "" + orientation.upsideDown)
+		cmd = cmd.replaceAll("$orientation", tt)
+
+		var js_xxteakey = self.config.js_xxteakey
+		if(!js_xxteakey) {
+			dump("js_xxteakey", "缺少配置")
+			err = 3
+			break
+		}
+		cmd = cmd.replaceAll("$XXTEAKEY", js_xxteakey)
+
+		if(have) {
+			trace("快速打apk包中...")
+		} else {
+			if(err = androidStudioProject(apkProjectDir, packageName)) {
+				break
+			}
+			trace("正在打apk原生包...")
+		}
+
+		// 将so复制过去。。
+		if(!self.debug) {// 表示release版本，才将存储的release版本的so库复制进去
+			var dir = "../build/jsb-default/frameworks/runtime-src/proj.android-studio-src/libs/release"
+			if(!FileUtils.direxist(dir)) {
+				dump(dir, "静态库文件夹缺失")
+				err = 4
+				break
+			}
+			// 复制前，不要删除源文件夹，
+			FileUtils.copytree(dir, "../build/jsb-default/frameworks/runtime-src/proj.android-studio/app/libs", 0)
+		}
+
+		if(!Sys(cmd)) {
+			dump(cmd, "执行失败")
+			err = 1
+			break
+		}
+
+		var cfgName = self.cfgName
+		if(have) {
+			// 直接将文件复制过来
+			cmd = "../batch/temp/$cfgName/proj.android_src"
+			cmd = cmd.replaceAll("$cfgName", cfgName)
+			FileUtils.rmdir(cmd)
+
+			// cmd = "../batch/temp/$cfgName/proj.android_src"
+			// cmd = cmd.replaceAll("$cfgName", cfgName)
+			// dump(path, "path")
+
+			FileUtils.copytree(path, cmd)
+			// 然后将资源一波操作即可，也就是src和res
+
+			cmd = "../build/jsb-default/$name"
+			var cmd3 = "../batch/temp/$cfgName/proj.android_src/assets/$name"
+			cmd3 = cmd3.replaceAll("$cfgName", cfgName)
+
+			// 检测
+
+			var ary;
+			if(self.have("assetsSvnVersion")) {
+				ary = ["res", "src"];
+			} else {
+				ary = ["src"];
+			}
+
+			var cmd2;
+			var cmd4;
+			for(var _, v of ary) {
+				cmd2 = cmd.replaceAll("$name", v)
+				cmd4 = cmd3.replaceAll("$name", v)
+				FileUtils.copytree(cmd2, cmd4)
+			}
+			if(err) {
+				break
+			}
+		} else {
+			// 搜寻当前目录下的apk
+			var list = []
+			FileUtils.dirlist(strDebug("../build/jsb-default/$DEBUG/android"), list, ".*.apk$", FileUtils.DL_FILE)
+			if(list.length == 0) {
+				dump(strDebug("../build/jsb-default/$DEBUG/android 下一个'.apk'文件都没找到？！"), "错误")
+				err = 8
+				break
+			}
+			if(list.length > 1) {
+				dump(strDebug("../build/jsb-default/$DEBUG/android/apk下'.apk'文件太多？！"), "错误")
+				err = 9
+				break
+			}
+
+			cmd = "../batch/temp/$CFG_NAME/proj.android_src"
+			cmd = cmd.replaceAll("$CFG_NAME", cfgName)
+			FileUtils.rmdir(cmd)
+
+			trace("正在拆包...")
+			cmd = "java -jar -Duser.language=en -Dfile.encoding=UTF8 $HANDY_HOME/utils/apktool.jar d -o ../batch/temp/$CFG_NAME/proj.android_src #A"
+			cmd = cmd.replaceAll("$CFG_NAME", cfgName)
+			cmd = cmd.replaceAll("#A", list[0])
+			Sys(cmd)
+
+			// 不压缩指定扩展名
+			var path_xx = "../batch/temp/$CFG_NAME/proj.android_src/apktool.yml"
+			path_xx = path_xx.replaceAll("$CFG_NAME", cfgName)
+
+			var content = FileUtils.readfile(path_xx)
+			if(!content) {
+				dump(path_xx, "打开文件失败")
+				err = 10
+				break
+			}
+			content = content.replaceAll("- arsc\n- png", "- arsc\n- png\n- mp3")
+			FileUtils.writefile(path_xx, content)
+
+			cmd = "java -jar $HANDY_HOME/utils/AXMLPrinter2.jar ../batch/temp/$CFG_NAME/proj.android_src/original/AndroidManifest.xml -f > ../batch/temp/$CFG_NAME/proj.android_src/2.xml"
+			cmd = cmd.replaceAll("$CFG_NAME", cfgName)
+			if(!self.showLog) {
+				cmd += " 2>/dev/null"
+			}
+			if(system(cmd) != 0) {
+				dump(cmd, "指令执行失败")
+				err = 12
+				break
+			}
+
+			cmd = "../batch/temp/$CFG_NAME/proj.android_src/original/AndroidManifest.xml"
+			cmd = cmd.replaceAll("$CFG_NAME", cfgName)
+			FileUtils.remove(cmd)
+
+			cmd = "../batch/temp/$CFG_NAME/proj.android_src/2.xml"
+			var cmd2 = "../batch/temp/$CFG_NAME/proj.android_src/original/AndroidManifest.xml"
+			cmd = cmd.replaceAll("$CFG_NAME", cfgName)
+			cmd2 = cmd2.replaceAll("$CFG_NAME", cfgName)
+			FileUtils.movefile(cmd, cmd2)
+		}
+
+	} while(false)
+	return err
+}
+
+function iosProject(ipaProjectDir, groupValue) {
+	var err = 0
+	do {
+		self.ipaPackageInfo = [ipaProjectDir, groupValue.icon, groupValue.package_name]
+
+		// 修改证书 包名等信息
+		var dir = "../build/jsb-default/frameworks/runtime-src/proj.ios_mac"
+
+		// 直接干掉proj.ios_mac，复制过来即可
+		trace("正在复制ios_mac工程")
+
+		FileUtils.rmdir(dir)// 干掉初始目录
+		FileUtils.copytree("../build/jsb-default/frameworks/runtime-src/" + ipaProjectDir, dir)
+
+		// 开始替换图标
+		// 将某个文件夹加下的图片都复制过来
+		// 遍历文件夹
+		var list2 = []
+		FileUtils.dirlist(dir, list2, ".*.png$")
+		if(list2.length == 0) {
+			dump(dir, "一个png都找不到?")
+			err = 3
+			break
+		}
+		
+		var path33
+		var idx1
+
+		var idx3
+		var wh
+
+		var cmd2
+
+		var src_path = "../batch/icons/$A.png"
+		src_path = src_path.replaceAll("$A", groupValue.icon)
+		if(!FileUtils.exist(src_path)) {
+			dump(src_path, "严重错误：图标文件不存在!")
+			err = 4
+			break
+		}
+
+		// 将图片处理，过后，再复制进去
+		var cmd3 = "magick convert -resize $Wx$H! $SRC ../batch/temp/tmp.png"
+		cmd3 = cmd3.replaceAll("$SRC", src_path)
+		var cmd4
+
+		// 将图片处理，过后，再复制进去
+		var src_path2 = "../batch/LaunchImage/$A.png"
+		src_path2 = src_path2.replaceAll("$A", groupValue.icon)
+		if(!FileUtils.exist(src_path2)) {
+			dump(src_path2, "严重错误：启动图 不存在!")
+			err = 5
+			break
+		}
+
+		var cmd5 = "magick convert -resize $Wx$H! $SRC ../batch/temp/tmp.png"
+		cmd5 = cmd5.replaceAll("$SRC", src_path2)
+		var cmd6
+
+		var cmd7 = "magick convert -rotate 90 ../batch/temp/tmp.png ../batch/temp/tmp2.png"
+		cmd7 = cmd7.replaceAll("$SRC", src_path2)
+
+		// 获取原始文件的MD5，加快优化速度
+		var md5_src_path = MD5.MD5Cal(src_path)
+		var md5_src_path2 = MD5.MD5Cal(src_path2)
+
+		var path_33 = "../batch/temp/$CFG_NAME/tempRes/$P_$W_$H"
+		path_33 = path_33.replaceAll("$CFG_NAME", self.cfgName)
+
+		// 判断icon是否存在
+		for(var _, path33 of list2) {
+			// dump(path33, "path33")
+			idx1 = path33.indexOf(".appiconset/")
+			if(idx1 != -1) {// 表示图标文件，再从相应的目录获取
+
+				// 获取这个图片文件的宽高
+				var size = base.getImgSize(path33)
+				if(!size) {
+					err = 1
+					break
+				}
+
+				var w = "" + size.width
+				var h = "" + size.height
+				var md5_path = path_33.replaceAll("$P", md5_src_path)
+				md5_path = md5_path.replaceAll("$W", w)
+				md5_path = md5_path.replaceAll("$H", h)
+
+				if(!FileUtils.exist(md5_path)) {
+					cmd4 = cmd3.replaceAll("$W", w)
+					cmd4 = cmd4.replaceAll("$H", h)
+
+					FileUtils.remove("../batch/temp/tmp.png")
+
+					// 检测此图标文件是否存在
+					if(err = magick(cmd4)) break
+
+					// 然后将图片优化至相应目录
+					FileUtils.remove("../batch/temp/tmp.pngo")
+					Sys("$HANDY_HOME/utils/ios/pngquant --ext .pngo ../batch/temp/tmp.png")
+					// 将处理过的图片，移动到临时文件中缓存起来，避免下次再优化，导致时间太慢
+					FileUtils.movefile("../batch/temp/tmp.pngo", md5_path)
+				}
+
+				// 将缓存中的文件复制到项目中即可
+				 FileUtils.copyfile(md5_path, path33)
+				continue;
+			}
+
+			// 启动图也替换
+			idx1 = path33.indexOf("LaunchScreenBackground.png")
+			if(idx1 != -1) {
+				// 获取这个图片文件的宽高
+				var size = base.getImgSize(path33)
+				if(!size) {
+					err = 1
+					break
+				}
+				var w = size.width
+				var h = size.height
+				//var r = w < h;// 是否需要旋转
+
+				w = "" + w
+				h = "" + h
+
+				var md5_path = path_33.replaceAll("$P", md5_src_path2)
+				md5_path = md5_path.replaceAll("$W", w)
+				md5_path = md5_path.replaceAll("$H", h)
+
+				if(!FileUtils.exist(md5_path)) {
+					cmd6 = cmd5.replaceAll("$W", w)
+					cmd6 = cmd6.replaceAll("$H", h)
+					FileUtils.remove("../batch/temp/tmp.png")
+					if(err = magick(cmd6)) break
+					// 然后将图片优化至相应目录
+					FileUtils.remove("../batch/temp/tmp.pngo")
+
+					Sys("$HANDY_HOME/utils/ios/pngquant --ext .pngo ../batch/temp/tmp.png")
+
+					// 将处理过的图片，移动到临时文件中缓存起来，避免下次再优化，导致时间太慢
+					FileUtils.movefile("../batch/temp/tmp.pngo", md5_path)
+				}
+
+				// 将缓存中的文件复制到项目中即可
+				FileUtils.copyfile(md5_path, path33)
+				continue
+			}
+		}
+		if(err) break
+		// 将临时的图片删除先
+		FileUtils.remove("../batch/temp/tmp.png")
+		FileUtils.remove("../batch/temp/tmp.pngo")
+		FileUtils.remove("../batch/temp/tmp2.png")
+		FileUtils.remove("../batch/temp/tmp2.pngo")
+	} while(false)
+	return err
+}
+
+// 准备好包文件
+function process7(groupValue) {
+	var err = 0
+	do {
+		var ipaProjectDir = groupValue.IpaProjectDir//"proj.ios_mac"
+		if(!ipaProjectDir) {
+			dump(ipaProjectDir, "缺少配置")
+			err = 1
+			break
+		}
+		// 获取工程的版本信息
+		if(err = process18("../build/jsb-default/frameworks/runtime-src/" + ipaProjectDir)) break
+		var ver = ret_temp
+		self.ipaSvnVersion = ver
+
+		var icon = groupValue.icon
+		if(!icon) {
+			dump(icon, "缺少配置")
+			err = 2
+			break
+		}
+
+		var packageName = groupValue.package_name
+		if(!packageName) {
+			dump(packageName, "缺少配置")
+			err = 2
+			break
+		}
+
+		var flag = self.debug ? "debug" : "release"
+		var dirName = ver + "-" + ipaProjectDir + "-" + icon + "-" + flag + "-" + packageName
+		dirName = dirName.replaceAll(".", "-")
+
+		// 获取工程目录，如果存在，直接快速打包就ok。。。
+		var path = "../batch/temp/__ipas/" + dirName// 获取目录
+
+		var have = FileUtils.exist(path)// 如果目录存在，则直接操作
+
+		var cmd
+		var cfgName = self.cfgName
+		if(!have) {
+			trace("正在打ipa原生包...")
+			if(err = iosProject(ipaProjectDir, groupValue)) break
+		} else {
+			trace("快速打ipa包中...")
+		}
+
+		// 不要自动编译。。
+		cmd = "/Applications/CocosCreator/Creator/$VERSION/CocosCreator.app/Contents/MacOS/CocosCreator --path ../ --build \"platform=ios;debug=$DEBUG;sourceMaps=false;inlineSpriteFrames=false;mergeStartScene=false;optimizeHotUpdate=false;packageName=$PACK_NAME;useDebugKeystore=true;orientation=$orientation;template=default;appABIs=['armeabi-v7a'];md5Cache=false;encryptJs=true;xxteaKey=$XXTEAKEY;zipCompressJs=true;autoCompile=false;buildScriptsOnly=$BSO\""
+		cmd = cmd.replaceAll("$DEBUG", self.debug ? "true" : "false")
+		cmd = cmd.replaceAll("$PACK_NAME", packageName)
+		cmd = cmd.replaceAll("$VERSION", self.creator_version)
+		cmd = cmd.replaceAll("$BSO", self.have("assetsSvnVersion1") ? "true" : "false")// 资源存在，就只编译脚本
+
+		var orientation = self.config.projectInfo[self.cfgName].orientation
+		var tt = "{'landscapeLeft':$L,'landscapeRight':$R,'portrait':$T,'upsideDown':$B}"
+		tt = tt.replaceAll("$L", "" + orientation.landscapeLeft)
+		tt = tt.replaceAll("$R", "" + orientation.landscapeRight)
+		tt = tt.replaceAll("$T", "" + orientation.portrait)
+		tt = tt.replaceAll("$B", "" + orientation.upsideDown)
+		cmd = cmd.replaceAll("$orientation", tt)
+
+		var js_xxteakey = self.config.js_xxteakey
+		if(!js_xxteakey) {
+			dump("js_xxteakey", "缺少配置")
+			err = 8
+			break
+		}
+		cmd = cmd.replaceAll("$XXTEAKEY", js_xxteakey)
+
+		if(!Sys(cmd)) {
+			dump(cmd, "执行失败")
+			err = 1
+			break
+		}
+
+		if(have) {
+			// 直接将文件复制过来
+			cmd = "../batch/temp/$cfgName/proj.ios_src"
+			cmd = cmd.replaceAll("$cfgName", cfgName)
+			FileUtils.rmdir(cmd)
+
+			// cmd = "../batch/temp/$cfgName/proj.ios_src"
+			// cmd = cmd.replaceAll("$cfgName", cfgName)
+
+			FileUtils.copytree(path, cmd)
+			// 然后将资源一波操作即可，也就是src和res
+
+			cmd = "../build/jsb-default/$name"
+
+			var cmd1 = "../batch/temp/$cfgName/proj.ios_src/Payload/$projectName-mobile.app/$name"
+			cmd1 = cmd1.replaceAll("$cfgName", cfgName)
+			cmd1 = cmd1.replaceAll("$projectName", self.projectName)
+
+			var ary
+			if(self.have("assetsSvnVersion")) {
+				ary = ["res", "src"]
+			} else {
+				ary = ["src"]
+			}
+
+			var cmd2
+			var cmd3
+			for(var _, v of ary) {
+				cmd2 = cmd.replaceAll("$name", v)
+				cmd3 = cmd1.replaceAll("$name", v)
+				FileUtils.copytree(cmd2, cmd3)
+			}
+			// 直接将工程复制过来就ok
+			// 检测工程目录是否存在
+		} else {
+			// 开始编译ipa包
+			if(err = compileIOS(groupValue)) {
+	     		trace("process7 1")
+				break
+			}
+
+			cmd = "../batch/temp/$CFG_NAME/proj.ios_src"
+			cmd = cmd.replaceAll("$CFG_NAME", cfgName)
+			FileUtils.rmdir(cmd)
+
+			cmd = "../batch/temp/$CFG_NAME/proj.ios_src"
+			cmd = cmd.replaceAll("$CFG_NAME", cfgName)
+			FileUtils.mkdir(cmd)
+
+			trace("正在拆包...")
+			// 解压包
+
+			var path43 = strDebug("../build/jsb-default/$DEBUG/ios/$PRJECT_NAME-mobile.ipa")
+			path43 = path43.replaceAll("$PRJECT_NAME", self.projectName)
+			if(!FileUtils.exist(path43)) {
+				dump(path43, "ios打包失败，找不到ipa包！")
+				err = 11
+				break
+			}
+			
+			FileUtils.rmdir("./Symbols")// 删除一个多余的文件
+
+			Sys("unzip " + path43)
+
+			cmd = "../batch/temp/$CFG_NAME/proj.ios_src/Payload"
+			cmd = cmd.replaceAll("$CFG_NAME", cfgName)
+			FileUtils.movetree("./Payload", cmd)
+
+			cmd = "plutil -convert json ../batch/temp/$CFG_NAME/proj.ios_src/Payload/$projectName-mobile.app/Info.plist"
+			cmd = cmd.replaceAll("$CFG_NAME", cfgName)
+			cmd = cmd.replaceAll("$projectName", self.projectName)
+	     	if(!Sys(cmd)) {
+	     		trace("process7 2")
+	     		err = 1
+	     		break
+	     	}
+	     }
+
+	} while(false)
+	return err
+}
+
+function compileIOS(groupValue) {
+	var err = 0
+	do {
+		var path = "../batch/certificate/$cfgName/package_cfg/$TYPE_ExportOptions.plist"
+		path = path.replaceAll("$cfgName", self.cfgName)
+
+		var is_dev = false
+    	if(groupValue.CODE_SIGN_IDENTITY.indexOf("Development") != -1) {
+    		is_dev = true
+    	}
+		path = path.replaceAll("$TYPE", is_dev ? "dev" : "dis")// 表示开发者就是发布者证书
+		if(!FileUtils.exist(path)) {
+			dump(path, "打开导出配置文件失败")
+			err = 1
+			break
+		}
+
+		var cmd = "xcodebuild clean -project ../build/jsb-default/frameworks/runtime-src/proj.ios_mac/$projectName.xcodeproj -alltargets"
+		cmd = cmd.replaceAll("$projectName", self.projectName)
+		dump(cmd, "cmd")
+		if(!Sys(cmd)) {
+			dump(cmd, "命令执行出错")
+			err = 1
+			break
+		}
+
+		FileUtils.mkdir("bin")
+
+		cmd = "xcodebuild archive -project ../build/jsb-default/frameworks/runtime-src/proj.ios_mac/$projectName.xcodeproj -scheme $projectName-mobile -archivePath ./bin/$projectName.xcodeproj -configuration $DEBUG"
+		cmd = cmd.replaceAll("$projectName", self.get("projectName"))
+		cmd = cmd.replaceAll("$DEBUG", self.get("debug") ? "Debug" : "Release")
+		if(!Sys(cmd)) {
+			dump(cmd, "命令执行出错")
+			err = 1
+			break
+		}
+
+		cmd = "xcodebuild -exportArchive -archivePath ./bin/$projectName.xcodeproj.xcarchive -exportPath $projectName -exportOptionsPlist $PATH"
+		cmd = cmd.replaceAll("$projectName", self.projectName)
+		cmd = cmd.replaceAll("$PATH", path)
+		if(!Sys(cmd)) {
+			dump(cmd, "命令执行出错")
+			err = 1
+			break
+		}
+		FileUtils.rmdir("bin")
+
+		cmd = strDebug("../build/jsb-default/$DEBUG/ios")
+		FileUtils.rmdir(cmd)
+		FileUtils.mkdir(cmd)
+
+		cmd = "./$projectName/$projectName-mobile.ipa"
+		cmd = cmd.replaceAll("$projectName", self.projectName)
+
+		var cmd2 = "../build/jsb-default/$DEBUG/ios/$projectName-mobile.ipa"
+		cmd2 = cmd2.replaceAll("$projectName", self.projectName)
+
+		FileUtils.movefile(cmd, strDebug(cmd2))
+
+		FileUtils.rmdir(self.projectName)
+
+	} while(false)
+	return err
+}
+
+function Sys(cmd) {
+	if(!self.showLog) {
+		cmd += " >/dev/null 2>/dev/null"
+	}
+	return system(cmd) == 0
+}
+
+// 调用主函数
+main(os.args())

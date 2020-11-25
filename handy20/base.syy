@@ -1,0 +1,53 @@
+
+
+// 获取图片的纹理
+function getImgSize(path) {
+	// 检测该文件大小。。
+	var byteAry = new ByteArray()
+    if(byteAry.open(path)) {
+        dump(path, "打开文件失败")
+        return null
+    }
+
+    byteAry.setPosition(16)
+    var w = byteAry.readInt(true)
+    var h = byteAry.readInt(true)
+    return {width:w, height:h}
+}
+
+function pause() {
+	dump(trackback(), "pause")
+	trace("按任意键继续...")
+	input()
+}
+
+/* 读取json文件 */
+function readJson(path) {
+	if(!FileUtils.exist(path)) return null// 文件不存在，直接返回null
+	var content = FileUtils.readfile(path)
+	if(!content) {
+		return null
+	}
+	return Json.parse(content)
+}
+
+/** 保存json，返回是否处理成功 */
+function saveJson(path, obj) {
+	var err = 0
+	do {
+		var content = Json.toString(obj)
+		if(!content) {
+			err = 1
+			break
+		}
+		if(err = FileUtils.writefile(path, content)) {
+			dump(path, "写入文件失败：")
+			dump(trackback(), "saveJson")
+			break
+		}
+	} while(false)
+	return err
+}
+
+
+return {pause:pause, readJson:readJson, saveJson:saveJson, getImgSize:getImgSize}
