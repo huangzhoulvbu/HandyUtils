@@ -62,6 +62,15 @@ function _subEvent() {
 		script_content += " else {\n"
 		byte.setPosition(byte.getPosition() + 4)
 		return
+	} else if(val == 0x13) {// case
+		byte.setPosition(byte.getPosition() + 4)
+
+		val = byte.readInt()
+		script_content += "if(ret=="
+		script_content += val
+		script_content += ") {\n"// 表示内部有条件限制
+		byte.setPosition(byte.getPosition() + 2)
+		return
 	} else {
 		script_content += "if("
 		flag = true
@@ -121,6 +130,7 @@ function _cmds() {
 	var first
 
 	var key = byte.readShort()
+dump(key, "key")
 
 	switch(key) {
 	case 0:// 事件结束
@@ -226,6 +236,21 @@ function _cmds() {
 	case 0xE:// 战斗失败
 		script_content += "delegate.fightLose()\n"
 		break
+	case 0x12:// 选择框
+		script_content += "var ret = delegate.choiceBox("// 赋值一下
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readString()
+		val = val.replaceAll("\n", "\\n")
+		script_content += "\""
+		script_content += val
+		script_content += "\","
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 武将
+		script_content += val
+		script_content += ")\n"
+
+		break
 	case 0x14:// 对话
 		script_content += "delegate.say("
 		byte.setPosition(byte.getPosition() + 2)
@@ -252,8 +277,6 @@ function _cmds() {
 		script_content += "\""
 		script_content += val
 		script_content += "\")\n"
-
-
 		break
 	case 0x16:// 信息
 		script_content += "delegate.info("
@@ -346,6 +369,30 @@ function _cmds() {
 		val = byte.readInt()//y
 		script_content += val
 		script_content += ")&&"// 如果某个武将站在某个点内，就成立
+		break
+	case 0x26:// 武将进入指定地点测试
+		script_content += "delegate.characterPosTest("
+			
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 武将
+		script_content += val
+		script_content += ","
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readInt()// x
+		script_content += val
+		script_content += ","
+
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readInt()// y
+		script_content += val
+
+		script_content += ")&&"
+
+		// 后面两个int不知道干嘛的，直接跳过完事
+		byte.setPosition(byte.getPosition() + 12)
+
 		break
 	case 0x27:// 背景显示
 		script_content += "delegate.setBg("// 设置我军出场
@@ -533,6 +580,49 @@ function _cmds() {
 		script_content += "&&"
 
 		break
+	case 0x41: {// 出场人数测试
+		script_content += "delegate.characterCount("
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 战斗方
+		script_content += val
+		script_content += ","
+
+		byte.setPosition(byte.getPosition() + 2)
+		var param = byte.readInt()// param
+
+		byte.setPosition(byte.getPosition() + 2)
+		var gx = byte.readShort()// 关系
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 区域 0整个战场 1、指定区域
+		script_content += val
+		script_content += ","
+
+		// 区域
+		for(var j = 0; j < 4; j++) {
+			if(j != 0) {
+				script_content += ","
+			}
+			byte.setPosition(byte.getPosition() + 2)
+			val = byte.readInt()// x、y、w、h
+			script_content += val
+			
+		}
+		script_content += ")"
+
+		if(gx == 0) {
+			script_content += ">="
+		} else if(gx == 1) {
+			script_content += "<"
+		} else {
+			script_content += "=="
+		}
+		script_content += param
+
+		script_content += "&&"
+	}
+		break
 	case 0x42:// 战斗胜利测试
 		script_content += "delegate.fightWinTest()&&"
 		break
@@ -639,7 +729,6 @@ function _cmds() {
 		script_content += val // 
 		script_content += ")\n"
 
-		//byte.setPosition(byte.getPosition() + 2)
 		break
 	case 0x49:// 战斗结束
 		script_content += "delegate.fightEnd()\n"// 战斗结束
@@ -959,6 +1048,95 @@ function _cmds() {
 		script_content += ")\n"
 
 		break
+	case 0x5F:// 单挑结束
+		script_content += "delegate.hitEnd()\n"
+		break
+	case 0x68:// 单挑开始
+		script_content += "delegate.hitStart("
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 武将1
+		script_content += val
+		script_content += ","
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 武将2
+		script_content += val
+		script_content += ")\n"
+		break
+	case 0x60:// 单挑武将出场
+		script_content += "delegate.hitCharacterEnter("
+		
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 是否为我方武将
+		script_content += val
+		script_content += ","
+
+		_readString()
+
+		script_content += ","
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 单挑动作 无、后转、前移、小步前移、小步后退、举起武器、防御、受攻击、攻击预备、
+		// 攻击、二次攻击、晕倒、喘气、撤退、跳舞1、跳舞2
+		script_content += val
+		script_content += ")\n"
+		break
+	case 0x61:// 单挑胜负显示
+		script_content += "delegate.hitWinLoseShow()\n"
+		break
+	case 0x62:// 单挑阵亡
+		script_content += "delegate.hitDeath("
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 延迟
+		script_content += val
+		script_content += ")\n"
+		break
+	case 0x63:// 单挑对话
+		script_content += "delegate.hitSay("
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 我方武将
+		script_content += val
+		script_content += ","
+
+		_readString()
+
+		script_content += ","
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 延迟
+		script_content += val
+		script_content += ")\n"
+
+		break
+	case 0x64:// 单挑动作
+		script_content += "delegate.hitAction("
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 武将
+		script_content += val
+		script_content += ","
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 动作
+		script_content += val
+		script_content += ")\n"
+
+		break
+	case 0x66:// 单挑攻击2
+		script_content += "delegate.hitAttack("
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 我方武将
+		script_content += val
+		script_content += ","
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 单挑攻击2 原地攻击、移动攻击、互相冲锋
+		script_content += val
+		script_content += ","
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 未命中
+		script_content += val
+		script_content += ")\n"
+
+		break
 	case 0x6b:// 法术
 		script_content += "delegate.magic("
 
@@ -988,6 +1166,15 @@ function _cmds() {
 	return ret
 }
 
+function _readString() {
+	byte.setPosition(byte.getPosition() + 2)
+	val = byte.readString()
+	val = val.replaceAll("\n", "\\n")	
+	script_content += "\""
+	script_content += val
+	script_content += "\""
+}
+
 function process() {
 	var err = 0
 	do {
@@ -1004,7 +1191,7 @@ function process() {
 		// dump(files, "----------files--------------")
 		// base.pause()
 
-		files = ["C:/Users/huangzhou/Documents/Cocos2d_Tools/CaoCao/Koei曹操传/CaoCao/S_00.eex"] 
+		files = ["C:/Users/huangzhou/Documents/Cocos2d_Tools/CaoCao/Koei曹操传/CaoCao/S_01.eex"] 
 		for(var _, path of files) {
 			byte = new ByteArray()
 			dump(path, "path")
