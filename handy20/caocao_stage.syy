@@ -13,7 +13,6 @@ var byte
 var script_content = ""
 var val
 
-// var section_first
 var sub_event = 0// 子事件，嵌套统计
 var is_section = false// 是否处于模块开始时
 
@@ -34,47 +33,35 @@ function main(argc) {
 	}
 }
 
-// 介绍
-// cl 是否跳过
-// function _intro(cl) {
-// 	byte.setPosition(byte.getPosition() + 2)// 跳过两个字节
-// 	val = byte.readString()
-// 	script_content += "// " + val + "\n"// 添加一条注释
-// 	if(cl) {
-// 		byte.setPosition(byte.getPosition() + 2)// 跳过两个字节
-// 	}
-// 	return script_content
-// }
-
 // 场景处理
-function _scene() {
+function _scene(idx) {
 	// 遇到0，就over
 	// 如果后面直接是0，那就没什么事了
+	script_content += "function scene"
+	script_content += idx
+	script_content += "() {\n"
+
 	var section_n = byte.readShort()// 场景内部分的数量
-//	byte.setPosition(byte.getPosition() + 2)// 跳过两个不知所云的字节
 	dump(section_n, "section_n")
 
 	for(var i = 0; i < section_n; i++) {
 		_section()
 	}
 
+	script_content += "}\n"
 
-// trace("--------------")
-// base.pause()
-	// byte.setPosition(byte.getPosition() + 4)// 跳过两个不知所云的字节
 }
 
 function _subEvent() {
-	// byte.setPosition(byte.getPosition() + 4)
-	// 只能跟一个条件
-	// 检测后面是什么鬼再说
-
-	// byte.read
 	val = byte.readShort()
 	byte.setPosition(byte.getPosition() - 2)
 	var flag = false
 	if(val == 2) {// 普通的注释信息，没有条件
 		script_content += "{\n"
+	} else if(val == 3) {// else
+		script_content += " else {\n"
+		byte.setPosition(byte.getPosition() + 4)
+		return
 	} else {
 		script_content += "if("
 		flag = true
@@ -126,8 +113,6 @@ function _section() {
 		}
 	}
 	script_content += "}\n"
-
-
 }
 
 // 处理指令
@@ -137,12 +122,10 @@ function _cmds() {
 
 	var key = byte.readShort()
 
-	dump(key, "key")
 	switch(key) {
 	case 0:// 事件结束
 		// 添加事件结束
 		sub_event--
-		dump(sub_event, "sub_event1")
 		if(sub_event == 0) {
 			ret = 1// 表示结束了
 		} else {
@@ -166,9 +149,6 @@ function _cmds() {
 			byte.setPosition(byte.getPosition() + 2)// 跳过两个字节
 		}
 		break
-	case 3:// else
-		script_content += "} else {\n"
-		break
 	case 5:// 变量测试
 		// 变量测试
 		byte.setPosition(byte.getPosition() + 2)
@@ -183,7 +163,7 @@ function _cmds() {
 					script_content += "&&"
 				}
 				val = byte.readShort()
-				script_content += "vars[" 
+				script_content += "delegate.vars[" 
 				script_content += val
 				script_content += "]"
 			}
@@ -202,7 +182,7 @@ function _cmds() {
 					script_content += "&&"
 				}
 				val = byte.readShort()
-				script_content += "!vars[" 
+				script_content += "!delegate.vars[" 
 				script_content += val
 				script_content += "]"
 			}
@@ -210,14 +190,14 @@ function _cmds() {
 		script_content += "&&"
 		break
 	case 8:// 菜单处理
-		script_content += "setMenu("
+		script_content += "delegate.setMenu("
 		byte.setPosition(byte.getPosition() + 2)
 		val = byte.readShort()
 		script_content += val
 		script_content += ")\n"
 		break
 	case 9:// 延时
-		script_content += "delay("
+		script_content += "delegate.delay("
 		byte.setPosition(byte.getPosition() + 2)
 		val = byte.readShort()
 		script_content += val
@@ -225,29 +205,29 @@ function _cmds() {
 		byte.setPosition(byte.getPosition() + 2)
 		break
 	case 0x10:// 许子将指导
-		script_content += "guide()\n"// 新手引导
+		script_content += "delegate.guide()\n"// 新手引导
 		break
 	case 0xB:// 变量赋值
-		script_content += "setVar("
+		script_content += "delegate.vars["
 		byte.setPosition(byte.getPosition() + 2)
 		val = byte.readInt()
 		script_content += val
-		script_content += ","
+		script_content += "]="
 
 		byte.setPosition(byte.getPosition() + 2)
 		val = byte.readShort()
 		script_content += val
-		script_content += ")\n"// false 或 true，只能设置
+		script_content += "\n"// false 或 true，只能设置
 
 		break
 	case 0xd:// 结束scene
-		script_content += "endScene()\n"
+		script_content += "delegate.endScene()\n"
 		break
 	case 0xE:// 战斗失败
-		script_content+="fightLose()\n"
+		script_content += "delegate.fightLose()\n"
 		break
 	case 0x14:// 对话
-		script_content += "say("
+		script_content += "delegate.say("
 		byte.setPosition(byte.getPosition() + 2)
 		val = byte.readString()
 		val = val.replaceAll("\n", "\\n")
@@ -256,7 +236,7 @@ function _cmds() {
 		script_content += "\")\n"
 		break
 	case 0x15:// 对话2
-		script_content += "say2("
+		script_content += "delegate.say2("
 		byte.setPosition(byte.getPosition() + 2)
 		val = byte.readShort()// 武将索引1
 		script_content += val
@@ -276,7 +256,7 @@ function _cmds() {
 
 		break
 	case 0x16:// 信息
-		script_content += "info("
+		script_content += "delegate.info("
 		byte.setPosition(byte.getPosition() + 2)
 		val = byte.readString()
 		val = val.replaceAll("\n", "\\n")
@@ -285,6 +265,7 @@ function _cmds() {
 		script_content += "\")\n"
 		break
 	case 0x19:// 胜利条件
+		script_content += "delegate.winConditions("
 		byte.setPosition(byte.getPosition() + 2)
 		val = byte.readString()
 		val = val.replaceAll("\n", "\\n")	
@@ -293,7 +274,7 @@ function _cmds() {
 		script_content += "\")\n"
 		break
 	case 0x1A:// 显示胜利条件
-		script_content += "showWinConditions("
+		script_content += "delegate.showWinConditions("
 		byte.setPosition(byte.getPosition() + 2)
 		val = byte.readString()
 		val = val.replaceAll("\n", "\\n")
@@ -302,13 +283,13 @@ function _cmds() {
 		script_content += "\")\n"
 		break
 	case 0x1c:// 绘图
-		script_content += "draw()\n"
+		script_content += "delegate.draw()\n"
 		break
 	case 0x1D:// 调色板设定
-		script_content += "setPalette()\n"
+		script_content += "delegate.setPalette()\n"
 		break
 	case 0x21:// 战场物体添加
-		script_content += "addFightItems("
+		script_content += "delegate.addFightItems("
 		byte.setPosition(byte.getPosition() + 2)
 		val = byte.readInt()// x
 		script_content += val
@@ -331,7 +312,7 @@ function _cmds() {
 		script_content += ")\n"
 		break
 	case 0x23:// 音效
-		script_content += "soundEffect("
+		script_content += "delegate.soundEffect("
 
 		byte.setPosition(byte.getPosition() + 2)
 		val = byte.readShort()// 音效
@@ -346,14 +327,13 @@ function _cmds() {
 		break
 	case 0x24:// cd音轨 track8
 		byte.setPosition(byte.getPosition() + 2)
-		script_content += "setSound("
+		script_content += "delegate.setSound("
 		val = byte.readShort()
 		script_content += val
 		script_content += ")\n"
 		break
 	case 0x25:// 武将进入指定地点测试
-
-		script_content += "pointTest("
+		script_content += "delegate.pointTest("
 		byte.setPosition(byte.getPosition() + 2)
 		val = byte.readShort()// 武将
 		script_content += val
@@ -366,12 +346,9 @@ function _cmds() {
 		val = byte.readInt()//y
 		script_content += val
 		script_content += ")&&"// 如果某个武将站在某个点内，就成立
-
-
-
 		break
 	case 0x27:// 背景显示
-		script_content += "setBg("// 设置我军出场
+		script_content += "delegate.setBg("// 设置我军出场
 		byte.setPosition(byte.getPosition() + 2)// 跳过两个字节
 		val = byte.readShort()
 		script_content += val// 场景类型  外场景、中国地图、内场景、战场地图
@@ -394,7 +371,7 @@ function _cmds() {
 		script_content += ")\n"
 		break
 	case 0x2E:// 武将相邻测试
-		script_content += "nearTest("// 武将相邻测试
+		script_content += "delegate.nearTest("// 武将相邻测试
 		byte.setPosition(byte.getPosition() + 2)
 		val = byte.readShort()// 武将1
 		script_content += val
@@ -411,7 +388,7 @@ function _cmds() {
 		break
 	case 0x31:// 武将消失
 
-		script_content += "hideCharacter("// 武将消失
+		script_content += "delegate.hideCharacter("// 武将消失
 		byte.setPosition(byte.getPosition() + 2)// 范围 0单人、区域
 		val = byte.readShort()
 		script_content += val
@@ -445,7 +422,7 @@ function _cmds() {
 
 		break
 	case 0x32:// 武将移动
-		script_content += "moveCharacter("// 移动武将
+		script_content += "delegate.moveCharacter("// 移动武将
 		byte.setPosition(byte.getPosition() + 2)// 0、武将 1、位置索引
 		val = byte.readShort()
 		script_content += val
@@ -478,7 +455,7 @@ function _cmds() {
 
 		break
 	case 0x36:// 武将状态测试
-		script_content += "characterProperty("// 回合判断
+		script_content += "delegate.characterProperty("// 回合判断
 		byte.setPosition(byte.getPosition() + 2)
 		val = byte.readShort()// 武将
 		script_content += val
@@ -507,7 +484,7 @@ function _cmds() {
 
 		break
 	case 0x3D:// 获得物品
-		script_content += "getItem("// 回合判断
+		script_content += "delegate.getItem("// 回合判断
 
 		byte.setPosition(byte.getPosition() + 2)// 物品id
 		val = byte.readShort()
@@ -528,7 +505,7 @@ function _cmds() {
 
 		break
 	case 0x3F: {
-		script_content += "round()"// 回合判断
+		script_content += "delegate.round()"// 回合判断
 
 		byte.setPosition(byte.getPosition() + 2)// 跳过两个字节
 		var val2 = byte.readInt()
@@ -549,7 +526,7 @@ function _cmds() {
 		break
 	case 0x40:// 行动方测试
 		// 0：我军、1：友军、2：敌军
-		script_content += "curOper()=="// 返回当前行动方
+		script_content += "delegate.curOper()=="// 返回当前行动方
 		byte.setPosition(byte.getPosition() + 2)// 跳过两个字节
 		val = byte.readShort()
 		script_content += val
@@ -557,14 +534,14 @@ function _cmds() {
 
 		break
 	case 0x42:// 战斗胜利测试
-		script_content += "fightWinTest()&&"
+		script_content += "delegate.fightWinTest()&&"
 		break
 	case 0x4A: {// 我军出场强制设定
 		// 不管那些花里胡哨的，
 		// 先跳过6个字节，不知道干啥的
 		byte.setPosition(byte.getPosition() + 6)// 跳过两个字节
 
-		script_content += "setOurArmy("// 设置我军出场
+		script_content += "delegate.setOurArmy("// 设置我军出场
 		first = true
 		for(var i = 0; i < 10; i++) {
 			// 38\39也没什么用，跳过
@@ -581,15 +558,15 @@ function _cmds() {
 		}
 		break
 	case 0x43:// 战斗失败测试
-		script_content += "fightLoseTest()&&"
+		script_content += "delegate.fightLoseTest()&&"
 		break
 	case 0x44: // 战斗初始化
-		script_content += "initFight()\n"
+		script_content += "delegate.initFight()\n"
 		break
 	case 0x45:// 战场全局变量
 		byte.setPosition(byte.getPosition() + 10)
 		// 有10个字节不知道干啥的
-		script_content += "setFightGlobal("// 
+		script_content += "delegate.setFightGlobal("// 
 		val = byte.readInt()
 		script_content += val// 最大回合数
 		script_content += ","
@@ -631,7 +608,7 @@ function _cmds() {
 		script_content = _roleInfo(true)
 		break
 	case 0x48:// 个人装备设定
-		script_content += "setEquip("// 设置装备
+		script_content += "delegate.setEquip("// 设置装备
 
 		byte.setPosition(byte.getPosition() + 2)
 		val = byte.readShort()// 角色
@@ -665,10 +642,10 @@ function _cmds() {
 		//byte.setPosition(byte.getPosition() + 2)
 		break
 	case 0x49:// 战斗结束
-		script_content += "fightEnd()\n"// 战斗结束
+		script_content += "delegate.fightEnd()\n"// 战斗结束
 		break
 	case 0x4b:// 我军出场设定
-		script_content += "addMine("// 
+		script_content += "delegate.addMine("// 
 
 		byte.setPosition(byte.getPosition() + 2)
 		val = byte.readInt()// 位置索引
@@ -698,7 +675,7 @@ function _cmds() {
 
 		break
 	case 0x4C:// 隐藏武将出现
-		script_content += "showCharacter("
+		script_content += "delegate.showCharacter("
 
 		byte.setPosition(byte.getPosition() + 2)
 		val = byte.readShort()// 索引方式 0：武将 1：位置
@@ -718,7 +695,7 @@ function _cmds() {
 		script_content += ")\n"
 		break
 	case 0x4d:// 武将状态变更
-		script_content += "setRoleState("
+		script_content += "delegate.setRoleState("
 
 		byte.setPosition(byte.getPosition() + 2)
 		val = byte.readShort()// 搜索武将的方式
@@ -786,7 +763,7 @@ function _cmds() {
 		script_content += ")\n"
 		break
 	case 0x4E:// 武将方针变更
-		script_content += "setAI("
+		script_content += "delegate.setAI("
 
 		byte.setPosition(byte.getPosition() + 2)
 		val = byte.readShort()// 范围 0单人、1区域
@@ -847,7 +824,7 @@ function _cmds() {
 
 		break
 	case 0x4f:// 战场转向设置
-		script_content += "setFightTurn("
+		script_content += "delegate.setFightTurn("
 
 		byte.setPosition(byte.getPosition() + 2)
 		val = byte.readShort()// 武将1
@@ -876,7 +853,7 @@ function _cmds() {
 
 		break
 	case 0x50:// 战场动作设定
-		script_content += "setAnime("
+		script_content += "delegate.setAnime("
 		byte.setPosition(byte.getPosition() + 2)
 		val = byte.readShort()// 武将
 		script_content += val
@@ -899,10 +876,10 @@ function _cmds() {
 
 		break
 	case 0x51:// 战场恢复行动权
-		script_content += "resumeControl()\n"
+		script_content += "delegate.resumeControl()\n"
 		break
 	case 0x53:// 战场撤退
-		script_content += "retreat("
+		script_content += "delegate.retreat("
 
 		byte.setPosition(byte.getPosition() + 2)
 		val = byte.readShort()// 1、单人 2、区域
@@ -944,7 +921,7 @@ function _cmds() {
 
 		break
 	case 0x59:// 战利品
-		script_content += "fightReward("// 战场奖励
+		script_content += "delegate.fightReward("// 战场奖励
 
 		byte.setPosition(byte.getPosition() + 2)
 		val = byte.readInt()// 战场获得额外金钱
@@ -972,10 +949,10 @@ function _cmds() {
 
 		break
 	case 0x5A:// 战场操作开始
-		script_content += "startOper()\n"
+		script_content += "delegate.startOper()\n"
 		break
 	case 0x5C:// 战场高亮人物
-		script_content += "heightLightCharacter("
+		script_content += "delegate.heightLightCharacter("
 		byte.setPosition(byte.getPosition() + 2)
 		val = byte.readShort()// 武将
 		script_content += val
@@ -983,7 +960,7 @@ function _cmds() {
 
 		break
 	case 0x6b:// 法术
-		script_content += "magic("
+		script_content += "delegate.magic("
 
 		byte.setPosition(byte.getPosition() + 2)
 		val = byte.readInt()// x
@@ -1015,58 +992,68 @@ function process() {
 	var err = 0
 	do {
 		// 开始打开文件
-		trace("请输入待处理的脚本文件:")
-		var path = self.path
-		if(!path) {
+		// trace("请输入待处理的脚本文件:")
+		var path2 = self.path
+		if(!path2) {
 			dump("配置中缺少path属性", "错误")
 			break
 		}
-		byte = new ByteArray()
-		if(err = byte.open(path)) {// 打开失败，就直接无视
-			break
-		}
-		var head = byte.readString()
-		if(head != "EEX") {
-			dump("打开的非eex文件", "错误")
-			err = 1
-			break
-		}
+		var files = []
+		FileUtils.dirlist(path2, files, ".*.eex$", FileUtils.DL_FILE)
 
-		byte.setPosition(0xA)
+		// dump(files, "----------files--------------")
+		// base.pause()
 
-		// 自动分析场景个数
-		var scene_n = 0
-		var max = 0
-		while(true) {
-			val = byte.readShort()
-			byte.setPosition(byte.getPosition() - 2)
-			if(val < max) {// 有个数比之前的小，就表示场景的起始位置都读取完毕
+		files = ["C:/Users/huangzhou/Documents/Cocos2d_Tools/CaoCao/Koei曹操传/CaoCao/S_00.eex"] 
+		for(var _, path of files) {
+			byte = new ByteArray()
+			dump(path, "path")
+			if(err = byte.open(path)) {// 打开失败，就直接无视
 				break
 			}
-			max = val
-			// 退回去
-			dump(byte.readInt(), "----------------读取场景数据的起始位置--------")
-			scene_n++
+			var head = byte.readString()
+			if(head != "EEX") {
+				dump("打开的非eex文件", "错误")
+				err = 1
+				break
+			}
+
+			byte.setPosition(0xA)
+
+			// 自动分析场景个数
+			var scene_n = 0
+			var max = 0
+			while(true) {
+				val = byte.readShort()
+				byte.setPosition(byte.getPosition() - 2)
+				if(val < max) {// 有个数比之前的小，就表示场景的起始位置都读取完毕
+					break
+				}
+				max = val
+				// 退回去
+				scene_n++
+				byte.readInt()
+			}
+
+			script_content += "var delegate:any\n"
+
+			// 处理多个场景
+			for(var i = 0; i < scene_n; i++) {
+				_scene(i)
+			}
+
+			// 将脚本存储起来
+			path = path[path.lastIndexOf("/") + 1:path.lastIndexOf(".")]
+			path += ".ts"
+			FileUtils.writefile(path, script_content, FileUtils.UTF8)
+			script_content = ""
 		}
-
-		// for(var i = 0; i < scene_n; i++) {// 无视长度
-		// 	byte.readInt()
-		// }
-
-		dump(scene_n, "场景个数")
-
-		// 处理多个场景
-		for(var i = 0; i < scene_n; i++) {
-			_scene()
-		}
-
-
 	} while(false)
 	return err
 }
 
 function _roleInfo(key) {
-	val = key ? "setEnemys([" : "setFriends([" 
+	val = key ? "delegate.setEnemys(" : "delegate.setFriends(" 
 	script_content += val// 设置友军  一个二维数组完事
 
 
