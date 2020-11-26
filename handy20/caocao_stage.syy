@@ -77,8 +77,8 @@ function _subEvent() {
 	}
 	_cmds()
 
-	if(flag) {
 		byte.setPosition(byte.getPosition() + 2)
+	if(flag) {
 		script_content = script_content[0:-2]// 舍弃后面的两个&&
 		script_content += ") {\n"// 表示内部有条件限制
 	}
@@ -91,8 +91,9 @@ function _section() {
 
 	val = byte.readString()
 
-	script_content += "// " + val + "\n"// 添加一条注释
-	script_content += "if("
+	script_content += "// "
+	script_content += val
+	script_content += "\nif("// 添加一条注释
 
 	is_section = true
 	
@@ -130,7 +131,7 @@ function _cmds() {
 	var first
 
 	var key = byte.readShort()
-dump(key, "key")
+	dump(key, "key")
 
 	switch(key) {
 	case 0:// 事件结束
@@ -154,10 +155,9 @@ dump(key, "key")
 		script_content += val
 		script_content += "\n"// 添加一条注释
 
-
-		if(!is_section) {
-			byte.setPosition(byte.getPosition() + 2)// 跳过两个字节
-		}
+		// if(!is_section) {
+		// 	byte.setPosition(byte.getPosition() + 2)// 跳过两个字节
+		// }
 		break
 	case 5:// 变量测试
 		// 变量测试
@@ -196,8 +196,8 @@ dump(key, "key")
 				script_content += val
 				script_content += "]"
 			}
+			script_content += "&&"
 		}
-		script_content += "&&"
 		break
 	case 8:// 菜单处理
 		script_content += "delegate.setMenu("
@@ -287,6 +287,11 @@ dump(key, "key")
 		script_content += val
 		script_content += "\")\n"
 		break
+	case 0x17:// 场所名
+		script_content += "delegate.stageName("
+		_readString()
+		script_content += ")\n"
+		break
 	case 0x19:// 胜利条件
 		script_content += "delegate.winConditions("
 		byte.setPosition(byte.getPosition() + 2)
@@ -305,11 +310,29 @@ dump(key, "key")
 		script_content += val
 		script_content += "\")\n"
 		break
+	case 0x1B:// 撤退信息是否显示设定
+		script_content += "delegate.setRetreatInfoVisible("
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 武将
+		script_content += val
+		script_content += ","
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 赋值
+		script_content += val
+		script_content += ")\n"
+		break
 	case 0x1c:// 绘图
 		script_content += "delegate.draw()\n"
 		break
 	case 0x1D:// 调色板设定
 		script_content += "delegate.setPalette()\n"
+		break
+	case 0x20:// 武将头像设置
+		script_content += "delegate.setHeadImg("
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 头像状态 0:曹操普通、1惊讶、2愤怒、3欣喜、夏侯惇蒙目、10孔明邪恶、20曹丕称帝、80夏侯独目、ff孔明正常
+		script_content += val
+		script_content += ")\n"
 		break
 	case 0x21:// 战场物体添加
 		script_content += "delegate.addFightItems("
@@ -529,6 +552,35 @@ dump(key, "key")
 		script_content += param
 		script_content += "&&"
 
+		break
+	case 0x39:// 武将等级提升
+		script_content += "delegate.levelUp("
+
+		byte.setPosition(byte.getPosition() + 2)// 武将
+		val = byte.readShort()
+		script_content += val
+		script_content += ","
+
+		byte.setPosition(byte.getPosition() + 2)// 等级提升
+		val = byte.readInt()
+		script_content += val
+		script_content += ")\n"
+
+		break
+	case 0x3A: // 钱、剧本跳转、忠奸设置
+		script_content += "delegate.setGlobalInfo("
+		byte.setPosition(byte.getPosition() + 2)// 钱、sceIndex、野心
+		val = byte.readShort()
+		script_content += val
+		script_content += ","
+		byte.setPosition(byte.getPosition() + 2)// 运算、=、+、-
+		val = byte.readShort()
+		script_content += val
+		script_content += ","
+		byte.setPosition(byte.getPosition() + 2)// 参数
+		val = byte.readInt()
+		script_content += val
+		script_content += ")\n"
 		break
 	case 0x3D:// 获得物品
 		script_content += "delegate.getItem("// 回合判断
@@ -1009,6 +1061,76 @@ dump(key, "key")
 		script_content += ")\n"
 
 		break
+	case 0x54:// 战场撤退确认
+		script_content += "delegate.fightRetreatConfirm()\n"
+		break
+	case 0x55:// 战场复活
+		script_content += "delegate.fightRelive("
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 搜索方式 武将，位置
+		script_content += val
+		script_content += ","
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 武将
+		script_content += val
+		script_content += ","
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readInt()// 索引
+		script_content += val
+		script_content += ","
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readInt()// x
+		script_content += val
+		script_content += ","
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readInt()// y
+		script_content += val
+		script_content += ","
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 朝向
+		script_content += val
+		script_content += ")\n"
+
+
+		break
+	case 0x58:// 战场障碍设定
+		script_content += "delegate.setFightObstacles("
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 物体
+		script_content += val
+		script_content += ","
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 是否显示
+		script_content += val
+		script_content += ","
+		
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 地形
+		script_content += val
+		script_content += ","
+		
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readInt()// x
+		script_content += val
+		script_content += ","
+		
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readInt()// y
+		script_content += val
+		script_content += ","
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 未知1
+		script_content += val
+		script_content += ","
+
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 未知2
+		script_content += val
+		script_content += ")\n"
+
+		break
 	case 0x59:// 战利品
 		script_content += "delegate.fightReward("// 战场奖励
 
@@ -1040,6 +1162,19 @@ dump(key, "key")
 	case 0x5A:// 战场操作开始
 		script_content += "delegate.startOper()\n"
 		break
+	case 0x5B:// 战场区域高亮
+		script_content += "delegate.fightHeightLight("
+		for(var j = 0; j < 4; j++) {
+			byte.setPosition(byte.getPosition() + 2)
+			val = byte.readInt()// x、y、w、h
+			script_content += val
+			script_content += ","
+		}
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 战斗中
+		script_content += val
+		script_content += ")\n"
+		break
 	case 0x5C:// 战场高亮人物
 		script_content += "delegate.heightLightCharacter("
 		byte.setPosition(byte.getPosition() + 2)
@@ -1047,6 +1182,17 @@ dump(key, "key")
 		script_content += val
 		script_content += ")\n"
 
+		break
+	case 0x5D://回合上限设定
+		script_content += "delegate.setRoundLimit("
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 运算 = + -
+		script_content += val
+		script_content += ","
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readInt()// 参数
+		script_content += val
+		script_content += ")\n"
 		break
 	case 0x5F:// 单挑结束
 		script_content += "delegate.hitEnd()\n"
@@ -1120,8 +1266,24 @@ dump(key, "key")
 		script_content += ")\n"
 
 		break
+	case 0x65:// 单挑攻击1
+		script_content += "delegate.hitAttack2("
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 我方武将
+		script_content += val
+		script_content += ","
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 单挑攻击1 命中、格挡、格挡后退、闪躲绕前
+		script_content += val
+		script_content += ","
+		byte.setPosition(byte.getPosition() + 2)
+		val = byte.readShort()// 致命一击
+		script_content += val
+		script_content += ")\n"
+
+		break
 	case 0x66:// 单挑攻击2
-		script_content += "delegate.hitAttack("
+		script_content += "delegate.hitAttack2("
 
 		byte.setPosition(byte.getPosition() + 2)
 		val = byte.readShort()// 我方武将
@@ -1136,6 +1298,8 @@ dump(key, "key")
 		script_content += val
 		script_content += ")\n"
 
+		break
+	case 0x6A:// 未知
 		break
 	case 0x6b:// 法术
 		script_content += "delegate.magic("
@@ -1191,7 +1355,7 @@ function process() {
 		// dump(files, "----------files--------------")
 		// base.pause()
 
-		files = ["C:/Users/huangzhou/Documents/Cocos2d_Tools/CaoCao/Koei曹操传/CaoCao/S_01.eex"] 
+		files = ["C:/Users/huangzhou/Documents/Cocos2d_Tools/CaoCao/Koei曹操传/CaoCao/S_22.eex"] 
 		for(var _, path of files) {
 			byte = new ByteArray()
 			dump(path, "path")
@@ -1224,6 +1388,7 @@ function process() {
 
 			script_content += "var delegate:any\n"
 
+			script_content = ""
 			// 处理多个场景
 			for(var i = 0; i < scene_n; i++) {
 				_scene(i)
@@ -1233,7 +1398,6 @@ function process() {
 			path = path[path.lastIndexOf("/") + 1:path.lastIndexOf(".")]
 			path += ".ts"
 			FileUtils.writefile(path, script_content, FileUtils.UTF8)
-			script_content = ""
 		}
 	} while(false)
 	return err
